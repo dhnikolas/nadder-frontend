@@ -289,50 +289,20 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
     );
   }
 
-  // Если открыт модал настроек pipeline, отключаем drag and drop для карточек
-  if (isPipelineSettingsOpen === true) {
-    console.log('🚫 Drag and drop отключен - открыты настройки pipeline');
-    return (
-      <div className="flex-1 bg-gray-50 p-2">
-        <div className="flex space-x-3 overflow-x-auto w-full">
-          {statuses.map((status, index) => (
-            <StatusColumn
-              key={`status-${status.id}-no-drag`}
-              status={status}
-              cards={cards[status.id] || []}
-              index={index}
-              onCreateCard={handleCreateCard}
-              onUpdateCard={handleUpdateCard}
-              onDeleteCard={handleDeleteCard}
-              isDragEnabled={false}
-            />
-          ))}
-        </div>
-
-        {statuses.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg">Статусы не найдены</p>
-            <p className="text-sm">Создайте первый статус для начала работы с Kanban доской</p>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext onDragEnd={isPipelineSettingsOpen ? () => {} : handleDragEnd}>
       <div className="flex-1 bg-gray-50 p-2">
         <div className="flex space-x-3 overflow-x-auto w-full">
           {statuses.map((status, index) => (
             <StatusColumn
-              key={`status-${status.id}`}
+              key={`status-${status.id}-${isPipelineSettingsOpen ? 'no-drag' : 'drag'}`}
               status={status}
               cards={cards[status.id] || []}
               index={index}
               onCreateCard={handleCreateCard}
               onUpdateCard={handleUpdateCard}
               onDeleteCard={handleDeleteCard}
-              isDragEnabled={true}
+              isDragEnabled={!isPipelineSettingsOpen}
             />
           ))}
         </div>
