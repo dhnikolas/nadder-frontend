@@ -123,6 +123,12 @@ export interface CardResponse {
   updated_at: string;
 }
 
+export interface PipelineCardsResponse {
+  pipeline_id: number;
+  pipeline_name: string;
+  cards: CardResponse[];
+}
+
 // Типы для API ответов
 export interface ApiError {
   message: string;

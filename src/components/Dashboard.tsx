@@ -150,9 +150,18 @@ const Dashboard: React.FC = () => {
   const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
 
   // Загружаем проекты один раз при инициализации
+  const [isProjectsLoading, setIsProjectsLoading] = useState(false);
+  
   useEffect(() => {
     const loadProjects = async () => {
+      // Защита от повторных запросов
+      if (isProjectsLoading) {
+        console.log('🔄 Проекты уже загружаются, пропускаем...');
+        return;
+      }
+      
       try {
+        setIsProjectsLoading(true);
         console.log('📁 Загружаем проекты...');
         const data = await apiService.getProjects();
         
@@ -163,6 +172,7 @@ const Dashboard: React.FC = () => {
           return;
         }
         
+        console.log('✅ Проекты загружены:', data.length);
         setProjects(data);
         
         if (data.length > 0) {
@@ -193,6 +203,8 @@ const Dashboard: React.FC = () => {
         }
       } catch (error) {
         console.error('❌ Ошибка загрузки проектов:', error);
+      } finally {
+        setIsProjectsLoading(false);
       }
     };
 
@@ -200,6 +212,8 @@ const Dashboard: React.FC = () => {
   }, []); // Загружаем только один раз при монтировании
 
   // Загружаем pipelines при изменении проекта
+  const [isPipelinesLoading, setIsPipelinesLoading] = useState(false);
+  
   useEffect(() => {
     const loadPipelines = async () => {
       if (!selectedProject) {
@@ -207,7 +221,14 @@ const Dashboard: React.FC = () => {
         return;
       }
 
+      // Защита от повторных запросов
+      if (isPipelinesLoading) {
+        console.log('🔄 Pipelines уже загружаются, пропускаем...');
+        return;
+      }
+
       try {
+        setIsPipelinesLoading(true);
         console.log('📋 Загружаем pipelines для проекта:', selectedProject.name);
         const data = await apiService.getPipelines(selectedProject.id);
         
@@ -220,6 +241,7 @@ const Dashboard: React.FC = () => {
         
         const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
         setPipelines(sortedPipelines);
+        console.log('✅ Pipelines загружены:', sortedPipelines.length);
         
         // Пытаемся восстановить сохраненный pipeline
         const storedPipeline = getSelectedPipeline();
@@ -237,11 +259,13 @@ const Dashboard: React.FC = () => {
       } catch (error) {
         console.error('❌ Ошибка загрузки pipelines:', error);
         setPipelines([]);
+      } finally {
+        setIsPipelinesLoading(false);
       }
     };
 
     loadPipelines();
-  }, [selectedProject]); // Загружаем при изменении проекта
+  }, [selectedProject?.id]); // Загружаем только при изменении ID проекта
 
 
 

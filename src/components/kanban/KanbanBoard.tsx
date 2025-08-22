@@ -22,8 +22,33 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
   // Используем useRef для предотвращения повторных вызовов
   const isLoadingRef = useRef(false);
 
+  // Кэш для предотвращения повторных запросов
+  const lastLoadedRef = useRef<{ projectId: number; pipelineId: number } | null>(null);
+
   useEffect(() => {
-    if (!projectId || !selectedPipeline || isLoadingRef.current) return;
+    // Проверяем, нужно ли загружать данные
+    if (!projectId || !selectedPipeline) {
+      setStatuses([]);
+      setCards({});
+      isLoadingRef.current = false;
+      lastLoadedRef.current = null;
+      return;
+    }
+
+    // Не загружаем данные при открытии/закрытии настроек pipeline
+    if (isPipelineSettingsOpen) {
+      return;
+    }
+
+    // Проверяем, не загружали ли мы уже эти данные
+    if (lastLoadedRef.current?.projectId === projectId && 
+        lastLoadedRef.current?.pipelineId === selectedPipeline.id &&
+        isLoadingRef.current) {
+      return;
+    }
+
+    // Проверяем, не загружаем ли мы уже данные
+    if (isLoadingRef.current) return;
     
     const loadStatusesAndCards = async () => {
       isLoadingRef.current = true;
@@ -44,28 +69,38 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
         const sortedStatuses = statusesData.sort((a, b) => a.sort_order - b.sort_order);
         setStatuses(sortedStatuses);
         
-        // Загружаем карточки параллельно для всех статусов
-        const cardPromises = sortedStatuses.map(async (status) => {
-          try {
-            const statusCards = await apiService.getCards(projectId, selectedPipeline.id, status.id);
-            return {
-              statusId: status.id,
-              cards: Array.isArray(statusCards) ? statusCards.sort((a, b) => a.sort_order - b.sort_order) : []
-            };
-          } catch (error) {
-            console.error(`Ошибка загрузки карточек для статуса ${status.id}:`, error);
-            return { statusId: status.id, cards: [] };
-          }
-        });
+        // Загружаем все карточки pipeline одним запросом
+        try {
+          console.log('🃏 Загружаем все карточки pipeline одним запросом...');
+          const pipelineCardsData = await apiService.getPipelineCards(projectId, selectedPipeline.id);
+          
+          // Группируем карточки по статусам
+          const cardsData: { [statusId: number]: CardResponse[] } = {};
+          sortedStatuses.forEach(status => {
+            const statusCards = pipelineCardsData.cards
+              .filter(card => card.status_id === status.id)
+              .sort((a, b) => a.sort_order - b.sort_order);
+            cardsData[status.id] = statusCards;
+          });
+          
+          console.log('✅ Все карточки загружены одним запросом:', {
+            pipeline: pipelineCardsData.pipeline_name,
+            totalCards: pipelineCardsData.cards.length,
+            statuses: sortedStatuses.length
+          });
+          setCards(cardsData);
+        } catch (error) {
+          console.error('❌ Ошибка загрузки карточек pipeline:', error);
+          // При ошибке устанавливаем пустые массивы карточек
+          const emptyCards: { [statusId: number]: CardResponse[] } = {};
+          sortedStatuses.forEach(status => {
+            emptyCards[status.id] = [];
+          });
+          setCards(emptyCards);
+        }
         
-        const cardResults = await Promise.all(cardPromises);
-        const cardsData: { [statusId: number]: CardResponse[] } = {};
-        cardResults.forEach(result => {
-          cardsData[result.statusId] = result.cards;
-        });
-        
-        console.log('📋 Загружены статусы:', sortedStatuses.length, 'запросов карточек:', cardResults.length);
-        setCards(cardsData);
+        // Обновляем кэш
+        lastLoadedRef.current = { projectId, pipelineId: selectedPipeline.id };
         
       } catch (error) {
         console.error('Ошибка загрузки данных:', error);
@@ -77,15 +112,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
       }
     };
 
-    if (projectId && selectedPipeline) {
-      loadStatusesAndCards();
-    } else {
-      // Очищаем состояние если нет выбранного pipeline
-      setStatuses([]);
-      setCards({});
-      isLoadingRef.current = false;
-    }
-  }, [projectId, selectedPipeline]);
+    loadStatusesAndCards();
+  }, [projectId, selectedPipeline?.id, isPipelineSettingsOpen]); // Загружаем при изменении ID проекта, pipeline или состояния настроек
 
   const handleCreateCard = useCallback(async (statusId: number, cardData: CreateCardRequest) => {
     if (!selectedPipeline) return;

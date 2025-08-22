@@ -18,6 +18,7 @@ import {
   MoveCardRequest,
   BulkCardSortRequest,
   CardResponse,
+  PipelineCardsResponse,
 } from '../types/api';
 
 class ApiService {
@@ -145,6 +146,12 @@ class ApiService {
   // Карточки
   async getCards(projectId: number, pipelineId: number, statusId: number): Promise<CardResponse[]> {
     const response: AxiosResponse<CardResponse[]> = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/statuses/${statusId}/cards`);
+    return response.data;
+  }
+
+  // Получение всех карточек pipeline одним запросом
+  async getPipelineCards(projectId: number, pipelineId: number): Promise<PipelineCardsResponse> {
+    const response: AxiosResponse<PipelineCardsResponse> = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/cards`);
     return response.data;
   }
 
