@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 
@@ -12,7 +13,16 @@ const RegisterForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { register } = useAuth();
+  const { register, login, user } = useAuth();
+  const navigate = useNavigate();
+
+  // Перенаправляем на главную страницу после успешного входа
+  useEffect(() => {
+    if (user) {
+      console.log('✅ Пользователь авторизован, перенаправляем на главную страницу');
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +44,17 @@ const RegisterForm: React.FC = () => {
 
     try {
       await register(email, name, password);
-      setSuccess('Регистрация успешна! Теперь вы можете войти в систему.');
+      setSuccess('Регистрация успешна! Выполняется автоматический вход...');
+      
+      // Автоматически входим в систему после успешной регистрации
+      try {
+        await login(email, password);
+        console.log('✅ Автоматический вход после регистрации выполнен успешно');
+      } catch (loginError: any) {
+        console.error('⚠️ Автоматический вход не удался:', loginError);
+        setSuccess('Регистрация успешна! Теперь вы можете войти в систему.');
+      }
+      
       setEmail('');
       setName('');
       setPassword('');
