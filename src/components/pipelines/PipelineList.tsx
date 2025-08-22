@@ -11,6 +11,7 @@ interface PipelineListProps {
   selectedPipeline: PipelineResponse | null;
   onPipelineSelect: (pipeline: PipelineResponse) => void;
   onSettingsOpen: (isOpen: boolean) => void;
+  onPipelineUpdate: () => Promise<void>;
 }
 
 const PipelineList: React.FC<PipelineListProps> = ({
@@ -19,6 +20,7 @@ const PipelineList: React.FC<PipelineListProps> = ({
   selectedPipeline,
   onPipelineSelect,
   onSettingsOpen,
+  onPipelineUpdate,
 }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -31,6 +33,10 @@ const PipelineList: React.FC<PipelineListProps> = ({
         ...pipelineData,
         sort_order: pipelines.length,
       });
+      
+      // Обновляем список pipelines
+      console.log('🔄 Обновляем список pipelines после создания');
+      await onPipelineUpdate();
       
       // Автоматически выбираем новый pipeline
       console.log('🆕 Автоматически выбираем новый pipeline:', { id: newPipeline.id, name: newPipeline.name });
@@ -48,6 +54,10 @@ const PipelineList: React.FC<PipelineListProps> = ({
 
     try {
       await apiService.deletePipeline(projectId, id);
+      
+      // Обновляем список pipelines
+      console.log('🔄 Обновляем список pipelines после удаления');
+      await onPipelineUpdate();
       
       // Если удаляемый pipeline был выбран, выбираем другой
       if (selectedPipeline?.id === id) {

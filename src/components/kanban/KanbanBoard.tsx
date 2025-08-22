@@ -32,6 +32,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
         
         // Загружаем статусы
         const statusesData = await apiService.getStatuses(projectId, selectedPipeline.id);
+        
+        // Проверяем, что API вернул массив
+        if (!Array.isArray(statusesData)) {
+          console.warn('⚠️ API вернул не массив для статусов:', statusesData);
+          setStatuses([]);
+          setCards({});
+          return;
+        }
+        
         const sortedStatuses = statusesData.sort((a, b) => a.sort_order - b.sort_order);
         setStatuses(sortedStatuses);
         
@@ -60,6 +69,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
         
       } catch (error) {
         console.error('Ошибка загрузки данных:', error);
+        // При ошибке устанавливаем пустые массивы
+        setStatuses([]);
+        setCards({});
       } finally {
         isLoadingRef.current = false;
       }

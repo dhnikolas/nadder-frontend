@@ -46,7 +46,7 @@ const StatusColumn: React.FC<StatusColumnProps> = memo(({
   };
 
   return (
-    <div className="w-80 bg-gray-100 rounded-lg p-2 flex-shrink-0">
+    <div className="w-80 bg-gray-100 rounded-lg p-2 flex-shrink-0 group">
       {/* Заголовок колонки */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center space-x-2">
@@ -76,13 +76,6 @@ const StatusColumn: React.FC<StatusColumnProps> = memo(({
           >
             <Edit className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => setIsCardModalOpen(true)}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded"
-            title="Добавить карточку"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
@@ -107,6 +100,21 @@ const StatusColumn: React.FC<StatusColumnProps> = memo(({
                   isDragEnabled={isDragEnabled}
                 />
               ))}
+              
+              {/* Кнопка добавления карточки под карточками */}
+              {cards.length > 0 && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setIsCardModalOpen(true)}
+                    className="w-full py-2 px-3 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-md transition-all duration-200 opacity-0 group-hover:opacity-100 flex items-center justify-center space-x-2"
+                    title="Добавить карточку"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="text-sm font-medium">Добавить карточку</span>
+                  </button>
+                </div>
+              )}
+              
               {provided.placeholder}
             </div>
           )}
@@ -123,6 +131,34 @@ const StatusColumn: React.FC<StatusColumnProps> = memo(({
               isDragEnabled={false}
             />
           ))}
+          
+          {/* Кнопка добавления карточки под карточками (когда drag and drop отключен) */}
+          {cards.length > 0 && (
+            <div className="mt-2">
+              <button
+                onClick={() => setIsCardModalOpen(true)}
+                className="w-full py-2 px-3 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-md transition-all duration-200 opacity-0 group-hover:opacity-100 flex items-center justify-center space-x-2"
+                title="Добавить карточку"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="text-sm font-medium">Добавить карточку</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Кнопка добавления карточки когда карточек нет */}
+      {cards.length === 0 && (
+        <div className="mt-2">
+          <button
+            onClick={() => setIsCardModalOpen(true)}
+            className="w-full py-2 px-3 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-md transition-all duration-200 opacity-0 group-hover:opacity-100 flex items-center justify-center space-x-2"
+            title="Добавить карточку"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="text-sm font-medium">Добавить карточку</span>
+          </button>
         </div>
       )}
 

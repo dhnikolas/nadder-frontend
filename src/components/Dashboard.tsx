@@ -34,6 +34,29 @@ const Dashboard: React.FC = () => {
     console.log('🧹 Очищен сохраненный pipeline при смене проекта');
   };
 
+  const handleProjectDelete = async (projectId: number) => {
+    try {
+      await apiService.deleteProject(projectId);
+      console.log('🗑️ Проект удален:', projectId);
+      
+      // Если удаляемый проект был выбран, сбрасываем выбор
+      if (selectedProject?.id === projectId) {
+        setSelectedProject(null);
+        setSelectedPipeline(null);
+        clearSelectedPipeline();
+        console.log('🧹 Сброшен выбор проекта и pipeline после удаления');
+      }
+      
+      // Обновляем список проектов (нужно будет реализовать в родительском компоненте)
+      // Пока что просто логируем
+      console.log('📋 Список проектов обновлен после удаления');
+      
+    } catch (error) {
+      console.error('❌ Ошибка удаления проекта:', error);
+      throw error; // Пробрасываем ошибку дальше
+    }
+  };
+
   const handlePipelineSelect = (pipeline: PipelineResponse | null) => {
     console.log('🔄 handlePipelineSelect вызван с:', {
       pipeline: pipeline ? { id: pipeline.id, name: pipeline.name, project_id: pipeline.project_id } : null,
@@ -57,6 +80,29 @@ const Dashboard: React.FC = () => {
         hasPipeline: !!pipeline,
         hasSelectedProject: !!selectedProject
       });
+    }
+  };
+
+  const handlePipelineUpdate = async () => {
+    if (!selectedProject) return;
+    
+    try {
+      console.log('🔄 Обновляем список pipelines для проекта:', selectedProject.name);
+      const data = await apiService.getPipelines(selectedProject.id);
+      
+      // Проверяем, что API вернул массив
+      if (!Array.isArray(data)) {
+        console.warn('⚠️ API вернул не массив для pipelines при обновлении:', data);
+        setPipelines([]);
+        return;
+      }
+      
+      const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
+      setPipelines(sortedPipelines);
+      console.log('✅ Список pipelines обновлен:', sortedPipelines.length, 'элементов');
+      
+    } catch (error) {
+      console.error('❌ Ошибка обновления pipelines:', error);
     }
   };
 
@@ -109,6 +155,14 @@ const Dashboard: React.FC = () => {
       try {
         console.log('📁 Загружаем проекты...');
         const data = await apiService.getProjects();
+        
+        // Проверяем, что API вернул массив
+        if (!Array.isArray(data)) {
+          console.warn('⚠️ API вернул не массив для проектов:', data);
+          setProjects([]);
+          return;
+        }
+        
         setProjects(data);
         
         if (data.length > 0) {
@@ -156,6 +210,14 @@ const Dashboard: React.FC = () => {
       try {
         console.log('📋 Загружаем pipelines для проекта:', selectedProject.name);
         const data = await apiService.getPipelines(selectedProject.id);
+        
+        // Проверяем, что API вернул массив
+        if (!Array.isArray(data)) {
+          console.warn('⚠️ API вернул не массив для pipelines:', data);
+          setPipelines([]);
+          return;
+        }
+        
         const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
         setPipelines(sortedPipelines);
         
@@ -174,6 +236,7 @@ const Dashboard: React.FC = () => {
         }
       } catch (error) {
         console.error('❌ Ошибка загрузки pipelines:', error);
+        setPipelines([]);
       }
     };
 
@@ -202,6 +265,7 @@ const Dashboard: React.FC = () => {
                 projects={projects}
                 selectedProject={selectedProject}
                 onProjectSelect={handleProjectSelect}
+                onProjectDelete={handleProjectDelete}
               />
             </div>
 
@@ -236,6 +300,7 @@ const Dashboard: React.FC = () => {
                   selectedPipeline={selectedPipeline}
                   onPipelineSelect={handlePipelineSelect}
                   onSettingsOpen={setIsPipelineSettingsOpen}
+                  onPipelineUpdate={handlePipelineUpdate}
                 />
               </div>
 
