@@ -16,6 +16,7 @@ import {
   CreateCardRequest,
   UpdateCardRequest,
   MoveCardRequest,
+  BulkCardSortRequest,
   CardResponse,
 } from '../types/api';
 
@@ -170,6 +171,11 @@ class ApiService {
 
   async moveCard(projectId: number, id: number, data: MoveCardRequest): Promise<void> {
     await this.api.put(`/projects/${projectId}/cards/${id}/move`, data);
+  }
+
+  // Массовое обновление сортировки карточек
+  async bulkUpdateCardSort(projectId: number, cards: { id: number; sort_order: number }[]): Promise<void> {
+    await this.api.put(`/projects/${projectId}/cards/bulk-sort`, { cards });
   }
 }
 

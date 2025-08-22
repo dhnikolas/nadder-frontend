@@ -191,22 +191,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
           sort_order: destination.index,
         });
         
-        // Дополнительно обновляем sort_order на сервере для всех карточек в статусе
-        // Это важно для правильной сортировки
+        // Массово обновляем sort_order для всех карточек в статусе
         try {
-          console.log('🔄 Обновляем sort_order для карточек в статусе:', sourceStatusId);
-          for (let i = 0; i < reorderedCards.length; i++) {
-            const card = reorderedCards[i];
-            if (card.id !== cardId) { // Не обновляем уже перемещенную карточку
-              console.log(`  📝 Карточка ${card.id}: sort_order ${card.sort_order} → ${i}`);
-              await apiService.updateCard(projectId, card.id, {
-                sort_order: i,
-              });
-            }
-          }
-          console.log('✅ sort_order обновлен для всех карточек');
+          console.log('🔄 Массово обновляем sort_order для карточек в статусе:', sourceStatusId);
+          const cardsToUpdate = reorderedCards.map((card, index) => ({
+            id: card.id,
+            sort_order: index,
+          }));
+          
+          await apiService.bulkUpdateCardSort(projectId, cardsToUpdate);
+          console.log('✅ sort_order массово обновлен для всех карточек:', cardsToUpdate.length);
         } catch (error) {
-          console.error('❌ Ошибка обновления sort_order карточек:', error);
+          console.error('❌ Ошибка массового обновления sort_order карточек:', error);
         }
       } else {
         // Если карточка перемещается в другой статус
@@ -256,22 +252,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
           sort_order: destination.index,
         });
         
-        // Дополнительно обновляем sort_order на сервере для всех карточек в целевом статусе
-        // Это важно для правильной сортировки
+        // Массово обновляем sort_order для всех карточек в целевом статусе
         try {
-          console.log('🔄 Обновляем sort_order для карточек в целевом статусе:', destStatusId);
-          for (let i = 0; i < updatedDestCards.length; i++) {
-            const card = updatedDestCards[i];
-            if (card.id !== cardId) { // Не обновляем уже перемещенную карточку
-              console.log(`  📝 Карточка ${card.id}: sort_order ${card.sort_order} → ${i}`);
-              await apiService.updateCard(projectId, card.id, {
-                sort_order: i,
-              });
-            }
-          }
-          console.log('✅ sort_order обновлен для всех карточек в целевом статусе');
+          console.log('🔄 Массово обновляем sort_order для карточек в целевом статусе:', destStatusId);
+          const cardsToUpdate = updatedDestCards.map((card, index) => ({
+            id: card.id,
+            sort_order: index,
+          }));
+          
+          await apiService.bulkUpdateCardSort(projectId, cardsToUpdate);
+          console.log('✅ sort_order массово обновлен для всех карточек в целевом статусе:', cardsToUpdate.length);
         } catch (error) {
-          console.error('❌ Ошибка обновления sort_order карточек в целевом статусе:', error);
+          console.error('❌ Ошибка массового обновления sort_order карточек в целевом статусе:', error);
         }
       }
     } catch (error) {

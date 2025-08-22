@@ -105,6 +105,13 @@ export interface MoveCardRequest {
   sort_order?: number;
 }
 
+export interface BulkCardSortRequest {
+  cards: {
+    id: number;
+    sort_order: number;
+  }[];
+}
+
 export interface CardResponse {
   id: number;
   title: string;
