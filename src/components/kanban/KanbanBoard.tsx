@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 import { PipelineResponse, StatusResponse, CardResponse, CreateCardRequest } from '../../types/api';
 import apiService from '../../services/api';
@@ -19,44 +19,59 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projectId, selectedPipeline, 
     console.log('🎯 KanbanBoard: isPipelineSettingsOpen =', isPipelineSettingsOpen, 'тип:', typeof isPipelineSettingsOpen);
   }, [isPipelineSettingsOpen]);
 
+  // Используем useRef для предотвращения повторных вызовов
+  const isLoadingRef = useRef(false);
+
   useEffect(() => {
-    const loadStatuses = async () => {
-      if (!selectedPipeline) return;
-      
+    if (!projectId || !selectedPipeline || isLoadingRef.current) return;
+    
+    const loadStatusesAndCards = async () => {
+      isLoadingRef.current = true;
       try {
-        const data = await apiService.getStatuses(projectId, selectedPipeline.id);
-        const sortedStatuses = data.sort((a, b) => a.sort_order - b.sort_order);
+        console.log('📋 Загружаем статусы и карточки для pipeline:', selectedPipeline.name);
+        
+        // Загружаем статусы
+        const statusesData = await apiService.getStatuses(projectId, selectedPipeline.id);
+        const sortedStatuses = statusesData.sort((a, b) => a.sort_order - b.sort_order);
         setStatuses(sortedStatuses);
         
-        // Загружаем карточки для каждого статуса
-        const cardsData: { [statusId: number]: CardResponse[] } = {};
-        for (const status of sortedStatuses) {
+        // Загружаем карточки параллельно для всех статусов
+        const cardPromises = sortedStatuses.map(async (status) => {
           try {
             const statusCards = await apiService.getCards(projectId, selectedPipeline.id, status.id);
-            // Проверяем, что API вернул массив
-            if (Array.isArray(statusCards)) {
-              cardsData[status.id] = statusCards.sort((a, b) => a.sort_order - b.sort_order);
-            } else {
-              console.warn(`API вернул не массив для статуса ${status.id}:`, statusCards);
-              cardsData[status.id] = [];
-            }
+            return {
+              statusId: status.id,
+              cards: Array.isArray(statusCards) ? statusCards.sort((a, b) => a.sort_order - b.sort_order) : []
+            };
           } catch (error) {
             console.error(`Ошибка загрузки карточек для статуса ${status.id}:`, error);
-            cardsData[status.id] = [];
+            return { statusId: status.id, cards: [] };
           }
-        }
+        });
+        
+        const cardResults = await Promise.all(cardPromises);
+        const cardsData: { [statusId: number]: CardResponse[] } = {};
+        cardResults.forEach(result => {
+          cardsData[result.statusId] = result.cards;
+        });
+        
+        console.log('📋 Загружены статусы:', sortedStatuses.length, 'запросов карточек:', cardResults.length);
         setCards(cardsData);
+        
       } catch (error) {
-        console.error('Ошибка загрузки статусов:', error);
+        console.error('Ошибка загрузки данных:', error);
+      } finally {
+        isLoadingRef.current = false;
       }
     };
 
     if (projectId && selectedPipeline) {
-      loadStatuses();
+      loadStatusesAndCards();
     } else {
       // Очищаем состояние если нет выбранного pipeline
       setStatuses([]);
       setCards({});
+      isLoadingRef.current = false;
     }
   }, [projectId, selectedPipeline]);
 

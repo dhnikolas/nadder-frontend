@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Settings } from 'lucide-react';
-
 import { PipelineResponse, CreatePipelineRequest } from '../../types/api';
 import apiService from '../../services/api';
 import CreatePipelineModal from './CreatePipelineModal';
 import PipelineSettingsModal from './PipelineSettingsModal';
-import { getSelectedPipeline } from '../../utils/storage';
-
 
 interface PipelineListProps {
   projectId: number;
+  pipelines: PipelineResponse[];
   selectedPipeline: PipelineResponse | null;
   onPipelineSelect: (pipeline: PipelineResponse) => void;
   onSettingsOpen: (isOpen: boolean) => void;
@@ -17,76 +15,14 @@ interface PipelineListProps {
 
 const PipelineList: React.FC<PipelineListProps> = ({
   projectId,
+  pipelines,
   selectedPipeline,
   onPipelineSelect,
   onSettingsOpen,
 }) => {
-  const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const loadPipelines = async () => {
-      try {
-        const data = await apiService.getPipelines(projectId);
-        const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
-        setPipelines(sortedPipelines);
-        
-        if (sortedPipelines.length > 0) {
-          // Пытаемся загрузить сохраненный pipeline для текущего проекта
-          const storedPipeline = getSelectedPipeline();
-          let pipelineToSelect: PipelineResponse | null = null;
-          
-          if (storedPipeline && storedPipeline.projectId === projectId) {
-            // Ищем сохраненный pipeline в списке
-            const foundPipeline = sortedPipelines.find(p => p.id === storedPipeline.id);
-            if (foundPipeline) {
-              console.log('📋 Восстанавливаем сохраненный pipeline:', foundPipeline.name);
-              pipelineToSelect = foundPipeline;
-            } else {
-              console.log('⚠️ Сохраненный pipeline не найден в списке');
-            }
-          } else if (storedPipeline) {
-            console.log('⚠️ Сохраненный pipeline принадлежит другому проекту:', {
-              storedProjectId: storedPipeline.projectId,
-              currentProjectId: projectId
-            });
-          } else {
-            console.log('ℹ️ Сохраненный pipeline не найден');
-          }
-          
-          // Если не удалось восстановить сохраненный pipeline, выбираем первый
-          if (!pipelineToSelect) {
-            console.log('🔄 Выбираем первый доступный pipeline:', sortedPipelines[0].name);
-            pipelineToSelect = sortedPipelines[0];
-          }
-          
-          // Выбираем pipeline только если он отличается от текущего
-          if (!selectedPipeline || selectedPipeline.id !== pipelineToSelect.id) {
-            console.log('🔄 Автоматически выбираем pipeline:', { 
-              id: pipelineToSelect.id, 
-              name: pipelineToSelect.name,
-              reason: !selectedPipeline ? 'нет выбранного' : 'отличается от текущего'
-            });
-            onPipelineSelect(pipelineToSelect);
-          } else {
-            console.log('ℹ️ Pipeline уже выбран:', { 
-              id: selectedPipeline.id, 
-              name: selectedPipeline.name 
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки pipeline:', error);
-      }
-    };
-
-    if (projectId) {
-      loadPipelines();
-    }
-  }, [projectId, onPipelineSelect, selectedPipeline]);
 
   const handleCreatePipeline = async (pipelineData: CreatePipelineRequest) => {
     setIsLoading(true);
@@ -95,8 +31,6 @@ const PipelineList: React.FC<PipelineListProps> = ({
         ...pipelineData,
         sort_order: pipelines.length,
       });
-      const updatedPipelines = [...pipelines, newPipeline];
-      setPipelines(updatedPipelines);
       
       // Автоматически выбираем новый pipeline
       console.log('🆕 Автоматически выбираем новый pipeline:', { id: newPipeline.id, name: newPipeline.name });
@@ -109,21 +43,18 @@ const PipelineList: React.FC<PipelineListProps> = ({
     }
   };
 
-
-
   const handleDeletePipeline = async (id: number) => {
     if (!window.confirm('Вы уверены, что хотите удалить этот pipeline?')) return;
 
     try {
       await apiService.deletePipeline(projectId, id);
-      const updatedPipelines = pipelines.filter(p => p.id !== id);
-      setPipelines(updatedPipelines);
       
       // Если удаляемый pipeline был выбран, выбираем другой
       if (selectedPipeline?.id === id) {
-        if (updatedPipelines.length > 0) {
-          console.log('🗑️ Выбираем новый pipeline после удаления:', { id: updatedPipelines[0].id, name: updatedPipelines[0].name });
-          onPipelineSelect(updatedPipelines[0]);
+        const remainingPipelines = pipelines.filter(p => p.id !== id);
+        if (remainingPipelines.length > 0) {
+          console.log('🗑️ Выбираем новый pipeline после удаления:', { id: remainingPipelines[0].id, name: remainingPipelines[0].name });
+          onPipelineSelect(remainingPipelines[0]);
         } else {
           console.log('🗑️ Нет доступных pipeline после удаления');
           onPipelineSelect(null as any);
@@ -134,13 +65,9 @@ const PipelineList: React.FC<PipelineListProps> = ({
     }
   };
 
-
-
   const openSettings = () => {
     setIsSettingsModalOpen(true);
   };
-
-
 
   return (
     <div className="bg-white rounded-lg shadow p-4 w-64">
@@ -183,28 +110,29 @@ const PipelineList: React.FC<PipelineListProps> = ({
                 </h4>
               </div>
               
-              <div className="flex space-x-1">
-                                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log('🔧 PipelineList: Открываем настройки pipeline');
-                      onSettingsOpen(true);
-                      openSettings();
-                    }}
-                    className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                    title="Настройки"
-                  >
-                    <Settings className="h-3 w-3" />
-                  </button>
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('🔧 PipelineList: Открываем настройки pipeline');
+                    onSettingsOpen(true);
+                    openSettings();
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                  title="Настройки"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+                
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeletePipeline(pipeline.id);
                   }}
-                  className="p-1 text-gray-400 hover:text-red-600 rounded"
+                  className="p-1 text-red-400 hover:text-red-600 rounded"
                   title="Удалить"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -212,37 +140,30 @@ const PipelineList: React.FC<PipelineListProps> = ({
         ))}
       </div>
 
-      {pipelines.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <p>Pipeline не найдены</p>
-          <p className="text-sm">Создайте первый pipeline для начала работы</p>
-        </div>
-      )}
-
       {/* Модальное окно создания pipeline */}
-      <CreatePipelineModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreatePipeline={handleCreatePipeline}
-        isLoading={isLoading}
-      />
-
-              {/* Модальное окно настроек pipeline */}
-        <PipelineSettingsModal
-          isOpen={isSettingsModalOpen}
-          onClose={() => {
-            console.log('🔧 PipelineList: Закрываем настройки pipeline');
-            setIsSettingsModalOpen(false);
-            onSettingsOpen(false);
-            // Принудительно сбрасываем состояние через небольшую задержку
-            setTimeout(() => {
-              console.log('🔧 PipelineList: Принудительно сбрасываем состояние');
-              onSettingsOpen(false);
-            }, 100);
-          }}
-          pipeline={selectedPipeline}
-          projectId={projectId}
+              <CreatePipelineModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreatePipeline={handleCreatePipeline}
+          isLoading={isLoading}
         />
+
+      {/* Модальное окно настроек pipeline */}
+      <PipelineSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => {
+          console.log('🔧 PipelineList: Закрываем настройки pipeline');
+          setIsSettingsModalOpen(false);
+          onSettingsOpen(false);
+          // Принудительно сбрасываем состояние через небольшую задержку
+          setTimeout(() => {
+            console.log('🔧 PipelineList: Принудительно сбрасываем состояние');
+            onSettingsOpen(false);
+          }, 100);
+        }}
+        pipeline={selectedPipeline}
+        projectId={projectId}
+      />
     </div>
   );
 };

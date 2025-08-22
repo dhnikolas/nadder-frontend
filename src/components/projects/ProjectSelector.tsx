@@ -1,73 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, Plus, FolderOpen } from 'lucide-react';
 import { ProjectResponse, CreateProjectRequest } from '../../types/api';
 import apiService from '../../services/api';
-import { getSelectedProject } from '../../utils/storage';
 
 interface ProjectSelectorProps {
+  projects: ProjectResponse[];
   selectedProject: ProjectResponse | null;
   onProjectSelect: (project: ProjectResponse) => void;
 }
 
-const ProjectSelector: React.FC<ProjectSelectorProps> = ({ selectedProject, onProjectSelect }) => {
-  const [projects, setProjects] = useState<ProjectResponse[]>([]);
+const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedProject, onProjectSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const data = await apiService.getProjects();
-        setProjects(data);
-        
-        if (data.length > 0) {
-          // Пытаемся загрузить сохраненный проект
-          const storedProject = getSelectedProject();
-          let projectToSelect: ProjectResponse;
-          
-          if (storedProject) {
-            // Ищем сохраненный проект в списке
-            const foundProject = data.find(p => p.id === storedProject.id);
-            if (foundProject) {
-              console.log('📁 Восстанавливаем сохраненный проект:', foundProject.name);
-              projectToSelect = foundProject;
-            } else {
-              console.log('⚠️ Сохраненный проект не найден, выбираем первый');
-              projectToSelect = data[0];
-            }
-          } else {
-            // Если нет сохраненного проекта, выбираем первый
-            console.log('ℹ️ Сохраненный проект не найден, выбираем первый доступный');
-            projectToSelect = data[0];
-          }
-          
-          // Выбираем проект только если он отличается от текущего
-          if (!selectedProject || selectedProject.id !== projectToSelect.id) {
-            console.log('🔄 Выбираем проект:', { 
-              id: projectToSelect.id, 
-              name: projectToSelect.name,
-              reason: !selectedProject ? 'нет выбранного' : 'отличается от текущего'
-            });
-            onProjectSelect(projectToSelect);
-          } else {
-            console.log('ℹ️ Проект уже выбран:', { 
-              id: selectedProject.id, 
-              name: selectedProject.name 
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки проектов:', error);
-      }
-    };
-
-    // Загружаем проекты только если нет выбранного проекта
-    if (!selectedProject) {
-      loadProjects();
-    }
-  }, [onProjectSelect, selectedProject]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +26,6 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ selectedProject, onPr
       };
       const createdProject = await apiService.createProject(newProject);
       console.log('🆕 Создан новый проект:', { id: createdProject.id, name: createdProject.name });
-      setProjects([...projects, createdProject]);
       onProjectSelect(createdProject);
       setNewProjectName('');
       setIsCreating(false);

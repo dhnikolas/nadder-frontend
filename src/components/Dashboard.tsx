@@ -100,55 +100,85 @@ const Dashboard: React.FC = () => {
     loadStoredData();
   }, []);
 
-  // Восстанавливаем сохраненный проект и pipeline
+  const [projects, setProjects] = useState<ProjectResponse[]>([]);
+  const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
+
+  // Загружаем проекты один раз при инициализации
   useEffect(() => {
-    const restoreStoredData = async () => {
+    const loadProjects = async () => {
       try {
-        // Загружаем проекты с сервера
-        const projects = await apiService.getProjects();
-        if (projects.length === 0) return;
+        console.log('📁 Загружаем проекты...');
+        const data = await apiService.getProjects();
+        setProjects(data);
+        
+        if (data.length > 0) {
+          // Пытаемся восстановить сохраненный проект
+          const storedProject = getSelectedProject();
+          let projectToRestore: ProjectResponse;
 
-        // Пытаемся восстановить сохраненный проект
-        const storedProject = getSelectedProject();
-        let projectToRestore: ProjectResponse;
-
-        if (storedProject) {
-          // Ищем сохраненный проект в списке
-          const foundProject = projects.find((p: ProjectResponse) => p.id === storedProject.id);
-          if (foundProject) {
-            console.log('📁 Восстанавливаем сохраненный проект:', foundProject.name);
-            projectToRestore = foundProject;
+          if (storedProject) {
+            // Ищем сохраненный проект в списке
+            const foundProject = data.find((p: ProjectResponse) => p.id === storedProject.id);
+            if (foundProject) {
+              console.log('📁 Восстанавливаем сохраненный проект:', foundProject.name);
+              projectToRestore = foundProject;
+            } else {
+              console.log('⚠️ Сохраненный проект не найден, выбираем первый');
+              projectToRestore = data[0];
+            }
           } else {
-            console.log('⚠️ Сохраненный проект не найден, выбираем первый');
-            projectToRestore = projects[0];
+            console.log('ℹ️ Сохраненный проект не найден, выбираем первый');
+            projectToRestore = data[0];
           }
-        } else {
-          console.log('ℹ️ Сохраненный проект не найден, выбираем первый');
-          projectToRestore = projects[0];
-        }
 
-        // Восстанавливаем проект
-        if (!selectedProject || selectedProject.id !== projectToRestore.id) {
-          console.log('🔄 Восстанавливаем проект в Dashboard:', projectToRestore.name);
-          setSelectedProject(projectToRestore);
-        }
-
-        // Проверяем, есть ли сохраненный pipeline для этого проекта
-        const storedPipeline = getSelectedPipeline();
-        if (storedPipeline && validateStoredData(projectToRestore.id)) {
-          console.log('📋 Найден валидный pipeline для восстановления:', storedPipeline.name);
-          // Pipeline будет восстановлен в PipelineList после загрузки проектов
+          // Восстанавливаем проект
+          if (!selectedProject || selectedProject.id !== projectToRestore.id) {
+            console.log('🔄 Восстанавливаем проект в Dashboard:', projectToRestore.name);
+            setSelectedProject(projectToRestore);
+          }
         }
       } catch (error) {
-        console.error('❌ Ошибка восстановления сохраненных данных:', error);
+        console.error('❌ Ошибка загрузки проектов:', error);
       }
     };
 
-    // Восстанавливаем данные только если нет выбранного проекта
-    if (!selectedProject) {
-      restoreStoredData();
-    }
-  }, [selectedProject]);
+    loadProjects();
+  }, []); // Загружаем только один раз при монтировании
+
+  // Загружаем pipelines при изменении проекта
+  useEffect(() => {
+    const loadPipelines = async () => {
+      if (!selectedProject) {
+        setPipelines([]);
+        return;
+      }
+
+      try {
+        console.log('📋 Загружаем pipelines для проекта:', selectedProject.name);
+        const data = await apiService.getPipelines(selectedProject.id);
+        const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
+        setPipelines(sortedPipelines);
+        
+        // Пытаемся восстановить сохраненный pipeline
+        const storedPipeline = getSelectedPipeline();
+        if (storedPipeline && validateStoredData(selectedProject.id)) {
+          const foundPipeline = sortedPipelines.find(p => p.id === storedPipeline.id);
+          if (foundPipeline && (!selectedPipeline || selectedPipeline.id !== foundPipeline.id)) {
+            console.log('📋 Восстанавливаем сохраненный pipeline:', foundPipeline.name);
+            setSelectedPipeline(foundPipeline);
+          }
+        } else if (sortedPipelines.length > 0 && !selectedPipeline) {
+          // Выбираем первый pipeline если нет сохраненного
+          console.log('🔄 Выбираем первый доступный pipeline:', sortedPipelines[0].name);
+          setSelectedPipeline(sortedPipelines[0]);
+        }
+      } catch (error) {
+        console.error('❌ Ошибка загрузки pipelines:', error);
+      }
+    };
+
+    loadPipelines();
+  }, [selectedProject]); // Загружаем при изменении проекта
 
 
 
@@ -169,6 +199,7 @@ const Dashboard: React.FC = () => {
             {/* Выбор проекта */}
             <div className="flex-1 mx-8">
               <ProjectSelector
+                projects={projects}
                 selectedProject={selectedProject}
                 onProjectSelect={handleProjectSelect}
               />
@@ -201,6 +232,7 @@ const Dashboard: React.FC = () => {
                 <PipelineList
                   key={selectedProject.id}
                   projectId={selectedProject.id}
+                  pipelines={pipelines}
                   selectedPipeline={selectedPipeline}
                   onPipelineSelect={handlePipelineSelect}
                   onSettingsOpen={setIsPipelineSettingsOpen}
