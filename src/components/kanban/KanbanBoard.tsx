@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatusResponse, CardResponse, CreateCardRequest, BulkCardSortRequest } from '../../types/api';
 import { apiService } from '../../services/api';
 import StatusColumn from './StatusColumn';
@@ -13,13 +13,31 @@ interface CardsData {
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
+  console.log('🎯 KanbanBoard component render with:', { projectId, pipelineId });
+  
   const [statuses, setStatuses] = useState<StatusResponse[]>([]);
   const [cards, setCards] = useState<CardsData>({});
   const [isLoading, setIsLoading] = useState(true);
+  const lastLoadRef = useRef<{ projectId: number; pipelineId: number } | null>(null);
+  const loadingRef = useRef<boolean>(false); // Флаг активной загрузки
 
   // Загрузка статусов и карточек
   const loadData = useCallback(async () => {
+    // Проверяем, не загружали ли мы уже данные для этих параметров
+    if (lastLoadRef.current?.projectId === projectId && lastLoadRef.current?.pipelineId === pipelineId) {
+      console.log('⏭️ Data already loaded for this project/pipeline, skipping');
+      return;
+    }
+    
+    // Проверяем, не идет ли уже загрузка
+    if (loadingRef.current) {
+      console.log('⏳ Loading already in progress, skipping');
+      return;
+    }
+    
     try {
+      console.log('🔄 loadData called for:', { projectId, pipelineId });
+      loadingRef.current = true;
       setIsLoading(true);
       
       // Загружаем статусы и карточки параллельно
@@ -67,16 +85,36 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
         acc[statusId] = groupedCards[parseInt(statusId)].length;
         return acc;
       }, {} as Record<string, number>));
+      
+      // Сохраняем информацию о последней загрузке
+      lastLoadRef.current = { projectId, pipelineId };
     } catch (error) {
       console.error('❌ Error loading data:', error);
     } finally {
+      loadingRef.current = false;
       setIsLoading(false);
     }
   }, [pipelineId, projectId]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    console.log('🔍 useEffect triggered for loadData, projectId:', projectId, 'pipelineId:', pipelineId);
+    if (projectId && pipelineId) {
+      loadData();
+    } else {
+      console.log('⏭️ Skipping loadData - missing projectId or pipelineId');
+    }
+  }, [loadData, projectId, pipelineId]);
+
+  // Логирование mount/unmount компонента
+  useEffect(() => {
+    console.log('🚀 KanbanBoard mounted for:', { projectId, pipelineId });
+    return () => {
+      console.log('💥 KanbanBoard unmounted for:', { projectId, pipelineId });
+      // Сбрасываем флаги при размонтировании
+      loadingRef.current = false;
+      lastLoadRef.current = null;
+    };
+  }, [projectId, pipelineId]);
 
   // Создание карточки
   const handleCreateCard = useCallback(async (statusId: number, cardData: CreateCardRequest) => {
@@ -202,27 +240,33 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
       console.log('💾 saveChangesToAPI called with:', { cardId, fromStatusId, toStatusId });
       console.log('💾 Current cards state:', cards);
       
-      // Только обновляем сортировку во всех затронутых статусах
-      // moveCard уже был вызван в moveCardInUI для перемещений между статусами
+      // Собираем все карточки для обновления сортировки из всех затронутых статусов
       const statusesToUpdate = fromStatusId === toStatusId ? [fromStatusId] : [fromStatusId, toStatusId];
-      console.log('🔄 Updating sort order for statuses:', statusesToUpdate);
+      const allCardsToUpdate: { id: number; sort_order: number }[] = [];
       
       for (const statusId of statusesToUpdate) {
         const statusCards = cards[statusId] || [];
         if (statusCards && statusCards.length > 0) {
-          const cardsToUpdate: BulkCardSortRequest = {
-            cards: statusCards.map((card, index) => ({
-              id: card.id,
-              sort_order: index
-            }))
-          };
-          
-          console.log(`🔄 Updating sort order for status ${statusId}:`, cardsToUpdate);
-          await apiService.bulkUpdateCardSort(projectId, cardsToUpdate);
-          console.log(`✅ Sort order updated for status ${statusId}`);
-        } else {
-          console.log(`📭 Status ${statusId} has no cards, skipping sort update`);
+          const statusCardsToUpdate = statusCards.map((card, index) => ({
+            id: card.id,
+            sort_order: index
+          }));
+          allCardsToUpdate.push(...statusCardsToUpdate);
+          console.log(`📝 Added ${statusCardsToUpdate.length} cards from status ${statusId} to bulk update`);
         }
+      }
+      
+      // Отправляем один bulk-sort запрос для всех затронутых карточек
+      if (allCardsToUpdate.length > 0) {
+        const bulkRequest: BulkCardSortRequest = {
+          cards: allCardsToUpdate
+        };
+        
+        console.log(`🚀 Sending single bulk-sort request for ${allCardsToUpdate.length} cards:`, bulkRequest);
+        await apiService.bulkUpdateCardSort(projectId, bulkRequest);
+        console.log(`✅ Bulk sort order updated for ${statusesToUpdate.length} status(es) in one request`);
+      } else {
+        console.log('📭 No cards to update sort order for');
       }
       
     } catch (error) {
