@@ -28,33 +28,41 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
         apiService.getPipelineCards(projectId, pipelineId)
       ]);
       
-      setStatuses(statusesResponse);
+      setStatuses(statusesResponse || []);
       
       // Группируем карточки по статусам
       const groupedCards: CardsData = {};
       
       // Инициализируем пустые массивы для всех статусов
-      statusesResponse.forEach(status => {
-        groupedCards[status.id] = [];
-      });
+      if (statusesResponse && Array.isArray(statusesResponse)) {
+        statusesResponse.forEach(status => {
+          groupedCards[status.id] = [];
+        });
+      } else {
+        console.log('📭 No statuses found in pipeline');
+      }
       
       // Распределяем карточки по статусам и сортируем
-      pipelineCardsResponse.cards.forEach(card => {
-        if (groupedCards[card.status_id]) {
-          groupedCards[card.status_id].push(card);
-        }
-      });
-      
-      // Сортируем карточки в каждом статусе по sort_order
-      Object.keys(groupedCards).forEach(statusId => {
-        const statusIdNum = parseInt(statusId);
-        groupedCards[statusIdNum].sort((a, b) => a.sort_order - b.sort_order);
-      });
+      if (pipelineCardsResponse.cards && Array.isArray(pipelineCardsResponse.cards)) {
+        pipelineCardsResponse.cards.forEach(card => {
+          if (groupedCards[card.status_id]) {
+            groupedCards[card.status_id].push(card);
+          }
+        });
+        
+        // Сортируем карточки в каждом статусе по sort_order
+        Object.keys(groupedCards).forEach(statusId => {
+          const statusIdNum = parseInt(statusId);
+          groupedCards[statusIdNum].sort((a, b) => a.sort_order - b.sort_order);
+        });
+      } else {
+        console.log('📭 No cards found in pipeline, initializing empty statuses');
+      }
       
       setCards(groupedCards);
       console.log('📊 Optimized data loading completed:');
-      console.log('  📋 Statuses loaded:', statusesResponse.length);
-      console.log('  🃏 Total cards loaded:', pipelineCardsResponse.cards.length);
+      console.log('  📋 Statuses loaded:', statusesResponse?.length || 0);
+      console.log('  🃏 Total cards loaded:', pipelineCardsResponse.cards?.length || 0);
       console.log('  📊 Cards grouped by status:', Object.keys(groupedCards).reduce((acc, statusId) => {
         acc[statusId] = groupedCards[parseInt(statusId)].length;
         return acc;
@@ -201,7 +209,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
       
       for (const statusId of statusesToUpdate) {
         const statusCards = cards[statusId] || [];
-        if (statusCards.length > 0) {
+        if (statusCards && statusCards.length > 0) {
           const cardsToUpdate: BulkCardSortRequest = {
             cards: statusCards.map((card, index) => ({
               id: card.id,
@@ -212,6 +220,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
           console.log(`🔄 Updating sort order for status ${statusId}:`, cardsToUpdate);
           await apiService.bulkUpdateCardSort(projectId, cardsToUpdate);
           console.log(`✅ Sort order updated for status ${statusId}`);
+        } else {
+          console.log(`📭 Status ${statusId} has no cards, skipping sort update`);
         }
       }
       
