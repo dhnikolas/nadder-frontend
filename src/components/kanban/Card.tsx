@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { CardResponse } from '../../types/api';
-import { Edit, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import CardModal from '../modals/CardModal';
 
 interface CardProps {
@@ -167,30 +167,18 @@ const Card: React.FC<CardProps> = React.memo(({
           <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 mr-2">
             {cardTitle}
           </h4>
-          <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditModalOpen(true);
-              }}
-              className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
-              title="Редактировать"
-            >
-              <Edit className="h-3 w-3" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm('Удалить карточку?')) {
-                  onDelete(card.id);
-                }
-              }}
-              className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600"
-              title="Удалить"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm('Удалить карточку?')) {
+                onDelete(card.id);
+              }
+            }}
+            className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Удалить"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
         </div>
         
         {cardDescription && (
@@ -199,9 +187,8 @@ const Card: React.FC<CardProps> = React.memo(({
           </p>
         )}
         
-        <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
+        <div className="flex justify-end mt-2 text-xs text-gray-400">
           <span>#{card.id}</span>
-          <span>Порядок: {card.sort_order}</span>
         </div>
       </div>
 

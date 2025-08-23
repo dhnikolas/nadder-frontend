@@ -8,9 +8,10 @@ interface ProjectSelectorProps {
   selectedProject: ProjectResponse | null;
   onProjectSelect: (project: ProjectResponse) => void;
   onProjectDelete?: (projectId: number) => Promise<void>;
+  onProjectCreate?: (project: ProjectResponse) => void;
 }
 
-const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedProject, onProjectSelect, onProjectDelete }) => {
+const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedProject, onProjectSelect, onProjectDelete, onProjectCreate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -27,6 +28,13 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
       };
       const createdProject = await apiService.createProject(newProject);
       console.log('🆕 Создан новый проект:', { id: createdProject.id, name: createdProject.name });
+      
+      // Уведомляем родительский компонент о создании нового проекта
+      if (onProjectCreate) {
+        onProjectCreate(createdProject);
+      }
+      
+      // Выбираем созданный проект
       onProjectSelect(createdProject);
       setNewProjectName('');
       setIsCreating(false);

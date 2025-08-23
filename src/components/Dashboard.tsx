@@ -44,17 +44,37 @@ const Dashboard: React.FC = () => {
       await apiService.deleteProject(projectId);
       console.log('🗑️ Проект удален:', projectId);
       
-      // Если удаляемый проект был выбран, сбрасываем выбор
-      if (selectedProject?.id === projectId) {
-        setSelectedProject(null);
-        setSelectedPipeline(null);
-        clearSelectedPipeline();
-        console.log('🧹 Сброшен выбор проекта и pipeline после удаления');
-      }
-      
-      // Обновляем список проектов (нужно будет реализовать в родительском компоненте)
-      // Пока что просто логируем
-      console.log('📋 Список проектов обновлен после удаления');
+      // Обновляем список проектов, удаляем удаленный проект
+      setProjects(prev => {
+        const updatedProjects = prev.filter(project => project.id !== projectId);
+        console.log('📋 Список проектов обновлен после удаления:', {
+          удаленПроект: projectId,
+          осталосьПроектов: updatedProjects.length
+        });
+        
+        // Если удаляемый проект был выбран, выбираем другой или сбрасываем
+        if (selectedProject?.id === projectId) {
+          if (updatedProjects.length > 0) {
+            // Выбираем первый доступный проект
+            const newSelectedProject = updatedProjects[0];
+            console.log('🔄 Выбираем новый проект после удаления:', newSelectedProject.name);
+            setSelectedProject(newSelectedProject);
+            saveSelectedProject(newSelectedProject);
+            
+            // Сбрасываем pipeline при смене проекта
+            setSelectedPipeline(null);
+            clearSelectedPipeline();
+          } else {
+            // Если проектов не осталось, сбрасываем все
+            console.log('📭 Проектов не осталось, сбрасываем выбор');
+            setSelectedProject(null);
+            setSelectedPipeline(null);
+            clearSelectedPipeline();
+          }
+        }
+        
+        return updatedProjects;
+      });
       
     } catch (error) {
       console.error('❌ Ошибка удаления проекта:', error);
@@ -322,6 +342,10 @@ const Dashboard: React.FC = () => {
                 selectedProject={selectedProject}
                 onProjectSelect={handleProjectSelect}
                 onProjectDelete={handleProjectDelete}
+                onProjectCreate={(project) => {
+                  console.log('🆕 Новый проект создан, добавляем в список:', project.name);
+                  setProjects(prev => [...prev, project].sort((a, b) => a.name.localeCompare(b.name)));
+                }}
               />
             </div>
 
