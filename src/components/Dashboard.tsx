@@ -15,6 +15,7 @@ const Dashboard: React.FC = () => {
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineResponse | null>(null);
   const [isPipelineSettingsOpen, setIsPipelineSettingsOpen] = useState(false);
   const [isRestoringData, setIsRestoringData] = useState(true); // Состояние восстановления данных
+  const [forceReloadKey, setForceReloadKey] = useState<string>(''); // Ключ для принудительной перезагрузки Kanban
 
   // Логируем изменения состояния настроек pipeline
   useEffect(() => {
@@ -29,6 +30,9 @@ const Dashboard: React.FC = () => {
     
     // Сбрасываем выбранный pipeline при смене проекта
     setSelectedPipeline(null);
+    
+    // Сбрасываем ключ принудительной перезагрузки
+    setForceReloadKey('');
     
     // Сохраняем выбранный проект
     saveSelectedProject(project);
@@ -89,6 +93,9 @@ const Dashboard: React.FC = () => {
     });
     
     setSelectedPipeline(pipeline);
+    
+    // Сбрасываем ключ принудительной перезагрузки при смене pipeline
+    setForceReloadKey('');
     
     // Сохраняем выбранный pipeline, если он есть
     if (pipeline && selectedProject) {
@@ -389,6 +396,16 @@ const Dashboard: React.FC = () => {
                   onPipelineSelect={handlePipelineSelect}
                   onSettingsOpen={setIsPipelineSettingsOpen}
                   onPipelineUpdate={handlePipelineUpdate}
+                  onStatusesUpdate={() => {
+                    console.log('🔄 Статусы обновлены в настройках, перезагружаем данные Kanban');
+                    // Принудительно перезагружаем данные Kanban доски
+                    if (selectedPipeline) {
+                      // Принудительно перезагружаем данные, изменяя key
+                      // Это заставит React пересоздать KanbanBoard компонент
+                      const newKey = `${selectedProject.id}-${selectedPipeline.id}-${Date.now()}`;
+                      setForceReloadKey(newKey);
+                    }
+                  }}
                 />
               </div>
 
@@ -396,7 +413,7 @@ const Dashboard: React.FC = () => {
               <div className="flex-1">
                 {selectedPipeline ? (
                   <KanbanBoard
-                    key={`${selectedProject.id}-${selectedPipeline?.id || 'no-pipeline'}`}
+                    key={forceReloadKey || `${selectedProject.id}-${selectedPipeline?.id || 'no-pipeline'}`}
                     projectId={selectedProject.id}
                     pipelineId={selectedPipeline.id}
                   />

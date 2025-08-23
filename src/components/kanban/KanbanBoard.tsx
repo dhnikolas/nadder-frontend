@@ -204,6 +204,26 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
     }
   }, [projectId]);
 
+  // Обновление статуса
+  const handleUpdateStatus = useCallback(async (statusId: number, data: { name?: string; color?: string }) => {
+    try {
+      const updatedStatus = await apiService.updateStatus(projectId, pipelineId, statusId, data);
+      
+      setStatuses(prev => 
+        prev.map(status => 
+          status.id === statusId 
+            ? { ...status, ...updatedStatus }
+            : status
+        )
+      );
+      
+      console.log('✅ Status updated:', updatedStatus);
+    } catch (error) {
+      console.error('❌ Error updating status:', error);
+      throw error;
+    }
+  }, [projectId, pipelineId]);
+
   // Удаление карточки
   const handleDeleteCard = useCallback(async (statusId: number, cardId: number) => {
     try {
@@ -348,7 +368,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
 
   return (
     <div className="flex-1 bg-gray-50 p-6 overflow-x-auto">
-      <div className="flex space-x-6 min-w-max">
+      <div className="flex space-x-4 min-w-max">
         {statuses
           .sort((a, b) => a.sort_order - b.sort_order)
           .map((status, index) => (
@@ -362,6 +382,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
               onDeleteCard={handleDeleteCard}
               moveCardInUI={moveCardInUI}
               saveChangesToAPI={saveChangesToAPI}
+              onUpdateStatus={handleUpdateStatus}
             />
           ))}
       </div>

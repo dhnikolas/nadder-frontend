@@ -4,6 +4,7 @@ import { StatusResponse, CardResponse, CreateCardRequest } from '../../types/api
 import { Plus } from 'lucide-react';
 import Card from './Card';
 import CardModal from '../modals/CardModal';
+import ColorPicker from '../common/ColorPicker';
 
 interface StatusColumnProps {
   status: StatusResponse;
@@ -14,6 +15,7 @@ interface StatusColumnProps {
   onDeleteCard: (statusId: number, cardId: number) => Promise<void>;
   moveCardInUI: (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => Promise<void>;
   saveChangesToAPI: (cardId: number, fromStatusId: number, toStatusId: number) => Promise<void>;
+  onUpdateStatus?: (statusId: number, data: { name?: string; color?: string }) => Promise<void>;
 }
 
 interface DragItem {
@@ -32,11 +34,13 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   onDeleteCard,
   moveCardInUI,
   saveChangesToAPI,
+  onUpdateStatus,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(status.name);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [isCreatingTop, setIsCreatingTop] = useState(false);
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
   // Drop zone для карточек
   const [{ isOver }, drop] = useDrop({
@@ -71,13 +75,17 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
     if (editName.trim() && editName !== status.name) {
       try {
         console.log('🔄 Обновляем имя статуса:', { old: status.name, new: editName });
+        if (onUpdateStatus) {
+          await onUpdateStatus(status.id, { name: editName.trim() });
+          console.log('✅ Имя статуса обновлено в API');
+        }
       } catch (error) {
         console.error('❌ Ошибка обновления имени статуса:', error);
         setEditName(status.name);
       }
     }
     setIsEditing(false);
-  }, [editName, status.name]);
+  }, [editName, status.name, onUpdateStatus, status.id]);
 
   const handleCreateCard = useCallback(async (cardData: CreateCardRequest, position: 'top' | 'bottom' = 'bottom') => {
     try {
@@ -98,10 +106,28 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   }, [onDeleteCard, status.id]);
 
   return (
-    <div className="flex-shrink-0 w-80 bg-white rounded-lg shadow-sm border border-gray-200 p-4 group">
+    <div className="flex-shrink-0 w-80 bg-white rounded-lg shadow-sm border border-gray-200 p-3 group">
       {/* Заголовок колонки */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center space-x-2">
+          {/* Цветной кружок */}
+          <ColorPicker
+            selectedColor={status.color}
+            onColorChange={async (color) => {
+              console.log('🎨 Цвет статуса изменен:', { old: status.color, new: color });
+              if (onUpdateStatus) {
+                try {
+                  await onUpdateStatus(status.id, { color });
+                  console.log('✅ Цвет статуса обновлен в API');
+                } catch (error) {
+                  console.error('❌ Ошибка обновления цвета статуса:', error);
+                }
+              }
+            }}
+            isOpen={isColorPickerOpen}
+            onToggle={() => setIsColorPickerOpen(!isColorPickerOpen)}
+          />
+          
           {isEditing ? (
             <input
               type="text"

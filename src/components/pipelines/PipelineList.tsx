@@ -12,6 +12,7 @@ interface PipelineListProps {
   onPipelineSelect: (pipeline: PipelineResponse) => void;
   onSettingsOpen: (isOpen: boolean) => void;
   onPipelineUpdate: () => Promise<void>;
+  onStatusesUpdate?: () => void;
 }
 
 const PipelineList: React.FC<PipelineListProps> = ({
@@ -21,6 +22,7 @@ const PipelineList: React.FC<PipelineListProps> = ({
   onPipelineSelect,
   onSettingsOpen,
   onPipelineUpdate,
+  onStatusesUpdate,
 }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -173,6 +175,7 @@ const PipelineList: React.FC<PipelineListProps> = ({
         }}
         pipeline={selectedPipeline}
         projectId={projectId}
+        onStatusesUpdate={onStatusesUpdate}
       />
     </div>
   );
