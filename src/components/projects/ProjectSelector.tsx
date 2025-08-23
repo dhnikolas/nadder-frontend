@@ -85,13 +85,15 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
       <div className="flex items-center space-x-2">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="flex items-center justify-between px-4 py-3 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-w-[200px] transition-colors duration-200"
         >
-          <FolderOpen className="h-5 w-5 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">
-            {selectedProject ? selectedProject.name : 'Выберите проект'}
-          </span>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          <div className="flex items-center space-x-2 min-w-0">
+            <FolderOpen className="h-5 w-5 text-gray-500 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-700 truncate">
+              {selectedProject ? selectedProject.name : 'Выберите проект'}
+            </span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0 ml-2" />
         </button>
         
         <button
@@ -105,7 +107,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
 
       {/* Форма создания проекта */}
       {isCreating && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+        <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-300 rounded-md shadow-lg z-10">
           <form onSubmit={handleCreateProject} className="p-4">
             <h3 className="text-lg font-medium text-gray-900 mb-3">Новый проект</h3>
             <input
@@ -138,8 +140,8 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
 
       {/* Выпадающий список проектов */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-96 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
-          <div className="py-1">
+        <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
+          <div className="py-2">
             {projects.length === 0 ? (
               <div className="px-4 py-2 text-sm text-gray-500">
                 Проекты не найдены
@@ -148,22 +150,20 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
               projects.map((project) => (
                 <div
                   key={project.id}
-                  className={`flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-100 ${
+                  onClick={() => {
+                    onProjectSelect(project);
+                    setIsOpen(false);
+                  }}
+                  className={`flex items-center justify-between px-4 py-3 text-sm hover:bg-gray-100 cursor-pointer transition-colors duration-150 ${
                     selectedProject?.id === project.id ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
                   }`}
                 >
-                  <button
-                    onClick={() => {
-                      onProjectSelect(project);
-                      setIsOpen(false);
-                    }}
-                    className="flex-1 text-left"
-                  >
-                    <div className="font-medium">{project.name}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{project.name}</div>
                     {project.description && (
                       <div className="text-xs text-gray-500 truncate">{project.description}</div>
                     )}
-                  </button>
+                  </div>
                   
                   <button
                     onClick={(e) => {

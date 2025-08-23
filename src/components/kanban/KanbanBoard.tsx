@@ -117,16 +117,64 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
   }, [projectId, pipelineId]);
 
   // Создание карточки
-  const handleCreateCard = useCallback(async (statusId: number, cardData: CreateCardRequest) => {
+  const handleCreateCard = useCallback(async (statusId: number, cardData: CreateCardRequest, position: 'top' | 'bottom' = 'bottom') => {
     try {
       const newCard = await apiService.createCard(projectId, pipelineId, statusId, cardData);
       
-      setCards(prev => ({
-        ...prev,
-        [statusId]: [...(prev[statusId] || []), newCard].sort((a, b) => a.sort_order - b.sort_order)
-      }));
+      // Сначала обновляем состояние карточек
+      setCards(prev => {
+        const currentCards = [...(prev[statusId] || [])];
+        
+        if (position === 'top') {
+          // Добавляем карточку в начало с sort_order = 0
+          const updatedCard = { ...newCard, sort_order: 0 };
+          const updatedCards = currentCards.map((card, index) => ({ ...card, sort_order: index + 1 }));
+          
+          return {
+            ...prev,
+            [statusId]: [updatedCard, ...updatedCards]
+          };
+        } else {
+          // Добавляем карточку в конец
+          const updatedCard = { ...newCard, sort_order: currentCards.length };
+          
+          return {
+            ...prev,
+            [statusId]: [...currentCards, updatedCard]
+          };
+        }
+      });
       
-      console.log('✅ Card created:', newCard);
+      // Затем обновляем сортировку на сервере, используя setTimeout для получения актуального состояния
+      setTimeout(async () => {
+        try {
+          setCards(currentCards => {
+            const statusCards = currentCards[statusId] || [];
+            if (statusCards.length > 0) {
+              const cardsToUpdate = statusCards.map((card, index) => ({
+                id: card.id,
+                sort_order: index
+              }));
+              
+              const bulkRequest: BulkCardSortRequest = { cards: cardsToUpdate };
+              console.log(`🔄 Updating sort order after creating card at ${position}:`, bulkRequest);
+              
+              apiService.bulkUpdateCardSort(projectId, bulkRequest)
+                .then(() => {
+                  console.log(`✅ Sort order updated on server for ${position} creation`);
+                })
+                .catch((error) => {
+                  console.error('❌ Error updating sort order:', error);
+                });
+            }
+            return currentCards;
+          });
+        } catch (error) {
+          console.error('❌ Error in delayed sort update:', error);
+        }
+      }, 100);
+      
+      console.log(`✅ Card created at ${position}:`, newCard);
     } catch (error) {
       console.error('❌ Error creating card:', error);
       throw error;

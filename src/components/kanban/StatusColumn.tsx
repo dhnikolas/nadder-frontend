@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useDrop } from 'react-dnd';
 import { StatusResponse, CardResponse, CreateCardRequest } from '../../types/api';
-import { Edit, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Card from './Card';
 import CardModal from '../modals/CardModal';
 
@@ -9,7 +9,7 @@ interface StatusColumnProps {
   status: StatusResponse;
   cards: CardResponse[];
   index: number;
-  onCreateCard: (statusId: number, cardData: CreateCardRequest) => Promise<void>;
+  onCreateCard: (statusId: number, cardData: CreateCardRequest, position?: 'top' | 'bottom') => Promise<void>;
   onUpdateCard: (cardId: number, cardData: { title?: string; description?: string }) => Promise<void>;
   onDeleteCard: (statusId: number, cardId: number) => Promise<void>;
   moveCardInUI: (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => Promise<void>;
@@ -36,6 +36,7 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(status.name);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [isCreatingTop, setIsCreatingTop] = useState(false);
 
   // Drop zone для карточек
   const [{ isOver }, drop] = useDrop({
@@ -78,10 +79,11 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
     setIsEditing(false);
   }, [editName, status.name]);
 
-  const handleCreateCard = useCallback(async (cardData: CreateCardRequest) => {
+  const handleCreateCard = useCallback(async (cardData: CreateCardRequest, position: 'top' | 'bottom' = 'bottom') => {
     try {
-      await onCreateCard(status.id, cardData);
+      await onCreateCard(status.id, cardData, position);
       setIsCardModalOpen(false);
+      setIsCreatingTop(false);
     } catch (error) {
       console.error('❌ Ошибка создания карточки:', error);
     }
@@ -111,21 +113,22 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
               autoFocus
             />
           ) : (
-            <h3 className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-blue-600" onClick={() => setIsEditing(true)}>
+            <h3 
+              className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors duration-200" 
+              onDoubleClick={() => setIsEditing(true)}
+              title="Двойной клик для редактирования"
+            >
               {status.name}
             </h3>
           )}
-          <button
-            onClick={() => setIsEditing(true)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded"
-            title="Редактировать название"
-          >
-            <Edit className="h-4 w-4 text-gray-500" />
-          </button>
         </div>
-        <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-          {cards.length}
-        </span>
+        <button
+          onClick={() => setIsCreatingTop(true)}
+          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors duration-200"
+          title="Создать карточку вверху"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Карточки */}
@@ -176,11 +179,19 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
         </div>
       )}
 
-      {/* Модальное окно создания карточки */}
+      {/* Модальное окно создания карточки внизу */}
       <CardModal
         isOpen={isCardModalOpen}
         onClose={() => setIsCardModalOpen(false)}
-        onCreateCard={handleCreateCard}
+        onCreateCard={(cardData) => handleCreateCard(cardData, 'bottom')}
+        statusId={status.id}
+      />
+
+      {/* Модальное окно создания карточки вверху */}
+      <CardModal
+        isOpen={isCreatingTop}
+        onClose={() => setIsCreatingTop(false)}
+        onCreateCard={(cardData) => handleCreateCard(cardData, 'top')}
         statusId={status.id}
       />
     </div>
