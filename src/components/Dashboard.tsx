@@ -6,7 +6,7 @@ import ProjectSelector from './projects/ProjectSelector';
 import PipelineList from './pipelines/PipelineList';
 import KanbanBoard from './kanban/KanbanBoard';
 import { ProjectResponse, PipelineResponse } from '../types/api';
-import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline } from '../utils/storage';
+import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData } from '../utils/storage';
 import apiService from '../services/api';
 
 const Dashboard: React.FC = () => {
@@ -14,6 +14,7 @@ const Dashboard: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<ProjectResponse | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineResponse | null>(null);
   const [isPipelineSettingsOpen, setIsPipelineSettingsOpen] = useState(false);
+  const [isRestoringData, setIsRestoringData] = useState(true); // Состояние восстановления данных
 
   // Логируем изменения состояния настроек pipeline
   useEffect(() => {
@@ -21,7 +22,11 @@ const Dashboard: React.FC = () => {
   }, [isPipelineSettingsOpen]);
 
   const handleProjectSelect = (project: ProjectResponse) => {
+    console.log('🔄 Выбираем проект:', project.name);
+    
+    // Устанавливаем выбранный проект
     setSelectedProject(project);
+    
     // Сбрасываем выбранный pipeline при смене проекта
     setSelectedPipeline(null);
     
@@ -107,8 +112,28 @@ const Dashboard: React.FC = () => {
   };
 
   const handleLogout = () => {
+    console.log('🚪 Выход из системы, очищаем сохраненные данные...');
+    
+    // Очищаем все сохраненные данные
+    clearAllStoredData();
+    console.log('🧹 Все сохраненные данные очищены');
+    
+    // Выходим из системы
     logout();
   };
+
+  // Автоматически сохраняем выбранный pipeline при его изменении
+  // useEffect(() => {
+  //   if (selectedPipeline && selectedProject) {
+  //     console.log('💾 Автоматически сохраняем выбранный pipeline:', selectedPipeline.name);
+  //     const pipelineData = {
+  //       id: selectedPipeline.id,
+  //       name: selectedPipeline.name,
+  //       projectId: selectedProject.id,
+  //     };
+  //     saveSelectedPipeline(pipelineData);
+  //   }
+  // }, [selectedPipeline, selectedProject]);
 
   // Загружаем сохраненные данные при инициализации
   useEffect(() => {
@@ -149,7 +174,7 @@ const Dashboard: React.FC = () => {
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
   const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
 
-  // Загружаем проекты один раз при инициализации
+  // Загружаем проекты при монтировании компонента
   const [isProjectsLoading, setIsProjectsLoading] = useState(false);
   
   useEffect(() => {
@@ -159,10 +184,10 @@ const Dashboard: React.FC = () => {
         console.log('🔄 Проекты уже загружаются, пропускаем...');
         return;
       }
-      
+
       try {
         setIsProjectsLoading(true);
-        console.log('📁 Загружаем проекты...');
+        console.log('📋 Загружаем проекты...');
         const data = await apiService.getProjects();
         
         // Проверяем, что API вернул массив
@@ -172,35 +197,33 @@ const Dashboard: React.FC = () => {
           return;
         }
         
-        console.log('✅ Проекты загружены:', data.length);
-        setProjects(data);
+        // Проекты не имеют sort_order, сортируем по имени
+        const sortedProjects = data.sort((a, b) => a.name.localeCompare(b.name));
+        setProjects(sortedProjects);
+        console.log('✅ Проекты загружены:', sortedProjects.length);
         
-        if (data.length > 0) {
-          // Пытаемся восстановить сохраненный проект
-          const storedProject = getSelectedProject();
-          let projectToRestore: ProjectResponse;
-
-          if (storedProject) {
-            // Ищем сохраненный проект в списке
-            const foundProject = data.find((p: ProjectResponse) => p.id === storedProject.id);
-            if (foundProject) {
-              console.log('📁 Восстанавливаем сохраненный проект:', foundProject.name);
-              projectToRestore = foundProject;
-            } else {
-              console.log('⚠️ Сохраненный проект не найден, выбираем первый');
-              projectToRestore = data[0];
-            }
-          } else {
-            console.log('ℹ️ Сохраненный проект не найден, выбираем первый');
-            projectToRestore = data[0];
-          }
-
-          // Восстанавливаем проект
-          if (!selectedProject || selectedProject.id !== projectToRestore.id) {
-            console.log('🔄 Восстанавливаем проект в Dashboard:', projectToRestore.name);
+        // Пытаемся восстановить сохраненный проект
+        const storedProject = getSelectedProject();
+        if (storedProject) {
+          const projectToRestore = sortedProjects.find(p => p.id === storedProject.id);
+          if (projectToRestore) {
+            console.log('🔄 Восстанавливаем сохраненный проект:', projectToRestore.name);
             setSelectedProject(projectToRestore);
+          } else {
+            console.log('⚠️ Сохраненный проект не найден в списке, выбираем первый');
+            if (sortedProjects.length > 0) {
+              setSelectedProject(sortedProjects[0]);
+            }
           }
+        } else if (sortedProjects.length > 0) {
+          // Если нет сохраненного проекта, выбираем первый
+          console.log('🔄 Нет сохраненного проекта, выбираем первый:', sortedProjects[0].name);
+          setSelectedProject(sortedProjects[0]);
         }
+        
+        // Сбрасываем состояние восстановления данных
+        setIsRestoringData(false);
+        console.log('✅ Восстановление данных завершено');
       } catch (error) {
         console.error('❌ Ошибка загрузки проектов:', error);
       } finally {
@@ -209,6 +232,7 @@ const Dashboard: React.FC = () => {
     };
 
     loadProjects();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Загружаем только один раз при монтировании
 
   // Загружаем pipelines при изменении проекта
@@ -218,6 +242,7 @@ const Dashboard: React.FC = () => {
     const loadPipelines = async () => {
       if (!selectedProject) {
         setPipelines([]);
+        setSelectedPipeline(null); // Сбрасываем выбранный pipeline
         return;
       }
 
@@ -236,6 +261,7 @@ const Dashboard: React.FC = () => {
         if (!Array.isArray(data)) {
           console.warn('⚠️ API вернул не массив для pipelines:', data);
           setPipelines([]);
+          setSelectedPipeline(null);
           return;
         }
         
@@ -245,26 +271,32 @@ const Dashboard: React.FC = () => {
         
         // Пытаемся восстановить сохраненный pipeline
         const storedPipeline = getSelectedPipeline();
-        if (storedPipeline && validateStoredData(selectedProject.id)) {
+        if (storedPipeline && storedPipeline.projectId === selectedProject.id) {
           const foundPipeline = sortedPipelines.find(p => p.id === storedPipeline.id);
-          if (foundPipeline && (!selectedPipeline || selectedPipeline.id !== foundPipeline.id)) {
+          if (foundPipeline) {
             console.log('📋 Восстанавливаем сохраненный pipeline:', foundPipeline.name);
             setSelectedPipeline(foundPipeline);
+          } else {
+            // Если сохраненный pipeline не найден, выбираем первый
+            console.log('⚠️ Сохраненный pipeline не найден в списке, выбираем первый:', sortedPipelines[0].name);
+            setSelectedPipeline(sortedPipelines[0]);
           }
-        } else if (sortedPipelines.length > 0 && !selectedPipeline) {
-          // Выбираем первый pipeline если нет сохраненного
+        } else if (sortedPipelines.length > 0) {
+          // Выбираем первый pipeline если нет сохраненного или он принадлежит другому проекту
           console.log('🔄 Выбираем первый доступный pipeline:', sortedPipelines[0].name);
           setSelectedPipeline(sortedPipelines[0]);
         }
       } catch (error) {
         console.error('❌ Ошибка загрузки pipelines:', error);
         setPipelines([]);
+        setSelectedPipeline(null);
       } finally {
         setIsPipelinesLoading(false);
       }
     };
 
     loadPipelines();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject?.id]); // Загружаем только при изменении ID проекта
 
 
@@ -312,8 +344,16 @@ const Dashboard: React.FC = () => {
       </header>
 
       {/* Основной контент */}
-                        <main className="w-full px-2 sm:px-4 lg:px-6 py-4">
-                    {selectedProject ? (
+      <main className="w-full px-2 sm:px-4 lg:px-6 py-4">
+        {isRestoringData ? (
+          // Индикатор восстановления данных
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Восстанавливаем сохраненные настройки...</p>
+            </div>
+          </div>
+        ) : selectedProject ? (
             <div className="flex space-x-4">
               {/* Левая панель со списком pipeline */}
               <div className="flex-shrink-0">

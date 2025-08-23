@@ -181,8 +181,8 @@ class ApiService {
   }
 
   // Массовое обновление сортировки карточек
-  async bulkUpdateCardSort(projectId: number, cards: { id: number; sort_order: number }[]): Promise<void> {
-    await this.api.put(`/projects/${projectId}/cards/bulk-sort`, { cards });
+  async bulkUpdateCardSort(projectId: number, cards: BulkCardSortRequest): Promise<void> {
+    await this.api.put(`/projects/${projectId}/cards/bulk-sort`, cards);
   }
 }
 
