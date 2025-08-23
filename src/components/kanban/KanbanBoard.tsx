@@ -22,27 +22,43 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
     try {
       setIsLoading(true);
       
-      // Загружаем статусы
-      const statusesResponse = await apiService.getStatuses(projectId, pipelineId);
+      // Загружаем статусы и карточки параллельно
+      const [statusesResponse, pipelineCardsResponse] = await Promise.all([
+        apiService.getStatuses(projectId, pipelineId),
+        apiService.getPipelineCards(projectId, pipelineId)
+      ]);
+      
       setStatuses(statusesResponse);
       
-      // Загружаем карточки для всех статусов
+      // Группируем карточки по статусам
       const groupedCards: CardsData = {};
       
-      await Promise.all(
-        statusesResponse.map(async (status) => {
-          try {
-            const statusCards = await apiService.getCards(projectId, pipelineId, status.id);
-            groupedCards[status.id] = statusCards.sort((a, b) => a.sort_order - b.sort_order);
-          } catch (error) {
-            console.error(`❌ Error loading cards for status ${status.id}:`, error);
-            groupedCards[status.id] = [];
-          }
-        })
-      );
+      // Инициализируем пустые массивы для всех статусов
+      statusesResponse.forEach(status => {
+        groupedCards[status.id] = [];
+      });
+      
+      // Распределяем карточки по статусам и сортируем
+      pipelineCardsResponse.cards.forEach(card => {
+        if (groupedCards[card.status_id]) {
+          groupedCards[card.status_id].push(card);
+        }
+      });
+      
+      // Сортируем карточки в каждом статусе по sort_order
+      Object.keys(groupedCards).forEach(statusId => {
+        const statusIdNum = parseInt(statusId);
+        groupedCards[statusIdNum].sort((a, b) => a.sort_order - b.sort_order);
+      });
       
       setCards(groupedCards);
-      console.log('📊 Data loaded:', { statuses: statusesResponse, cards: groupedCards });
+      console.log('📊 Optimized data loading completed:');
+      console.log('  📋 Statuses loaded:', statusesResponse.length);
+      console.log('  🃏 Total cards loaded:', pipelineCardsResponse.cards.length);
+      console.log('  📊 Cards grouped by status:', Object.keys(groupedCards).reduce((acc, statusId) => {
+        acc[statusId] = groupedCards[parseInt(statusId)].length;
+        return acc;
+      }, {} as Record<string, number>));
     } catch (error) {
       console.error('❌ Error loading data:', error);
     } finally {
