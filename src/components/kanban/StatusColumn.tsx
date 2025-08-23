@@ -12,8 +12,15 @@ interface StatusColumnProps {
   onCreateCard: (statusId: number, cardData: CreateCardRequest) => Promise<void>;
   onUpdateCard: (cardId: number, cardData: { title?: string; description?: string }) => Promise<void>;
   onDeleteCard: (statusId: number, cardId: number) => Promise<void>;
-  onMoveCard: (dragIndex: number, hoverIndex: number, fromStatusId: number, toStatusId: number) => void;
-  isDragEnabled?: boolean;
+  moveCardInUI: (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => Promise<void>;
+  saveChangesToAPI: (cardId: number, fromStatusId: number, toStatusId: number) => Promise<void>;
+}
+
+interface DragItem {
+  type: string;
+  cardId: number;
+  fromStatusId: number;
+  fromIndex: number;
 }
 
 const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
@@ -23,8 +30,8 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   onCreateCard,
   onUpdateCard,
   onDeleteCard,
-  onMoveCard,
-  isDragEnabled = true,
+  moveCardInUI,
+  saveChangesToAPI,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(status.name);
@@ -33,11 +40,26 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   // Drop zone для карточек
   const [{ isOver }, drop] = useDrop({
     accept: 'CARD',
-    drop: (item: any) => {
-      // Если карточка дропнута в пустую колонку, добавляем в конец
-      if (item.statusId !== status.id) {
-        onMoveCard(item.index, cards.length, item.statusId, status.id);
+    hover: (item: DragItem, monitor) => {
+      if (!monitor.isOver({ shallow: true })) return;
+      
+      // Если карточка перетаскивается в пустую колонку
+      if (item.fromStatusId !== status.id && cards.length === 0) {
+        moveCardInUI(item.cardId, item.fromStatusId, status.id, 0);
+        item.fromStatusId = status.id;
+        item.fromIndex = 0;
       }
+    },
+    drop: (item: DragItem) => {
+      console.log('🎯 Status column drop event:', { 
+        statusId: status.id, 
+        item: { cardId: item.cardId, fromStatusId: item.fromStatusId } 
+      });
+      
+      // Сохраняем изменения в API
+      saveChangesToAPI(item.cardId, item.fromStatusId, status.id);
+      
+      return { statusId: status.id, type: 'STATUS' };
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -120,8 +142,8 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
             index={cardIndex}
             onUpdate={async (cardId: number, cardData: { title?: string; description?: string }) => onUpdateCard(cardId, cardData)}
             onDelete={async (cardId: number) => handleDeleteCard(cardId)}
-            onMoveCard={onMoveCard}
-            isDragEnabled={isDragEnabled}
+            moveCardInUI={moveCardInUI}
+            saveChangesToAPI={saveChangesToAPI}
           />
         ))}
         

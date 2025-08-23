@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { CardResponse } from '../../types/api';
+import { Edit, Trash2 } from 'lucide-react';
 import CardModal from '../modals/CardModal';
 
 interface CardProps {
@@ -8,15 +9,15 @@ interface CardProps {
   index: number;
   onUpdate: (cardId: number, cardData: { title?: string; description?: string }) => Promise<void>;
   onDelete: (cardId: number) => Promise<void>;
-  onMoveCard: (dragIndex: number, hoverIndex: number, fromStatusId: number, toStatusId: number) => void;
-  isDragEnabled?: boolean;
+  moveCardInUI: (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => Promise<void>;
+  saveChangesToAPI: (cardId: number, fromStatusId: number, toStatusId: number) => Promise<void>;
 }
 
 interface DragItem {
   type: string;
-  id: number;
-  index: number;
-  statusId: number;
+  cardId: number;
+  fromStatusId: number;
+  fromIndex: number;
 }
 
 const Card: React.FC<CardProps> = React.memo(({ 
@@ -24,51 +25,120 @@ const Card: React.FC<CardProps> = React.memo(({
   index, 
   onUpdate, 
   onDelete, 
-  onMoveCard,
-  isDragEnabled = true 
+  moveCardInUI,
+  saveChangesToAPI
 }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
+  // Drag functionality
   const [{ isDragging }, drag] = useDrag({
     type: 'CARD',
     item: (): DragItem => ({
       type: 'CARD',
-      id: card.id,
-      index,
-      statusId: card.status_id,
+      cardId: card.id,
+      fromStatusId: card.status_id,
+      fromIndex: index,
     }),
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-    canDrag: isDragEnabled,
+    end: (item, monitor) => {
+      console.log('🃏 Drag ended for card:', card.title);
+      
+      // Проверяем, была ли карточка успешно перемещена
+      const dropResult = monitor.getDropResult();
+      if (dropResult) {
+        console.log('✅ Card dropped successfully:', dropResult);
+        // API вызов будет сделан в drop callback
+      } else {
+        console.log('❌ Card drop cancelled');
+      }
+    },
   });
 
+  // Drop functionality
   const [{ isOver }, drop] = useDrop({
     accept: 'CARD',
-    hover: (item: DragItem) => {
-      if (!isDragEnabled) return;
+    hover: (item: DragItem, monitor) => {
+      console.log('🎯 Hover event:', { item, currentCard: card.id, currentIndex: index });
       
-      const dragIndex = item.index;
+      if (!ref.current) {
+        console.log('❌ No ref.current');
+        return;
+      }
+      
+      const dragIndex = item.fromIndex;
       const hoverIndex = index;
-      const fromStatusId = item.statusId;
-      const toStatusId = card.status_id;
+      const dragStatusId = item.fromStatusId;
+      const hoverStatusId = card.status_id;
 
-      // Don't replace items with themselves
-      if (dragIndex === hoverIndex && fromStatusId === toStatusId) {
+      // Не заменяем элементы самими собой
+      if (item.cardId === card.id) {
+        console.log('🚫 Same card, skipping');
         return;
       }
 
-      // Call the move function
-      onMoveCard(dragIndex, hoverIndex, fromStatusId, toStatusId);
+      // Определяем позицию курсора относительно элемента
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      
+      if (!clientOffset) {
+        console.log('❌ No client offset');
+        return;
+      }
+      
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
 
-      // Update the item's index for further hovers
-      item.index = hoverIndex;
-      item.statusId = toStatusId;
+      // При перетаскивании вниз, срабатываем только когда курсор ниже 50%
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        console.log('⬇️ Dragging down but cursor above middle, skipping');
+        return;
+      }
+      
+      // При перетаскивании вверх, срабатываем только когда курсор выше 50%
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        console.log('⬆️ Dragging up but cursor below middle, skipping');
+        return;
+      }
+
+      // Выполняем перемещение в UI
+      console.log('🔄 Moving card in hover:', {
+        cardId: item.cardId,
+        from: { statusId: dragStatusId, index: dragIndex },
+        to: { statusId: hoverStatusId, index: hoverIndex }
+      });
+
+      moveCardInUI(item.cardId, dragStatusId, hoverStatusId, hoverIndex);
+
+      // Обновляем индексы для последующих hover events
+      item.fromStatusId = hoverStatusId;
+      item.fromIndex = hoverIndex;
+    },
+    drop: (item: DragItem) => {
+      console.log('🎯 Card drop event:', { 
+        targetCard: { id: card.id, title: card.title, statusId: card.status_id },
+        draggedItem: { cardId: item.cardId, fromStatusId: item.fromStatusId } 
+      });
+      
+      // Сохраняем изменения в API
+      saveChangesToAPI(item.cardId, item.fromStatusId, card.status_id);
+      
+      return { cardId: card.id, statusId: card.status_id, type: 'CARD' };
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
     }),
   });
+
+  // Объединяем drag и drop refs
+  const dragDropRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      drag(drop(node));
+    }
+  }, [drag, drop]);
 
   const handleCardClick = () => {
     if (!isDragging) {
@@ -77,62 +147,74 @@ const Card: React.FC<CardProps> = React.memo(({
     }
   };
 
-  const handleUpdate = async (cardId: number, cardData: { title?: string; description?: string }) => {
-    await onUpdate(cardId, cardData);
-    setIsEditModalOpen(false);
-  };
-
-  const handleDelete = async (cardId: number) => {
-    await onDelete(cardId);
-    setIsEditModalOpen(false);
-  };
-
-  // Формируем текст для tooltip
-  const cardTitle = useMemo(() => {
-    return card.description ? `${card.title}\n\n${card.description}` : card.title;
-  }, [card.title, card.description]);
-
-  // Объединяем drag и drop refs
-  const dragDropRef = (node: HTMLDivElement | null) => {
-    drag(drop(node));
-  };
+  const cardTitle = card.title || 'Без названия';
+  const cardDescription = card.description || '';
 
   return (
     <>
-      {/* Карточка с поддержкой drag and drop */}
       <div
         ref={dragDropRef}
-        className={`bg-white border border-gray-200 rounded-md p-2 mb-1 shadow-sm hover:shadow-md cursor-pointer w-full max-w-full max-h-32 overflow-hidden card ${
-          isDragging ? 'opacity-50 shadow-lg' : ''
-        } ${isOver ? 'border-blue-300 bg-blue-50' : ''} ${!isDragEnabled ? 'opacity-75' : ''}`}
+        className={`
+          bg-white border border-gray-200 rounded-lg p-3 cursor-pointer
+          hover:shadow-md transition-all duration-200
+          ${isDragging ? 'opacity-50 rotate-2 shadow-lg' : ''}
+          ${isOver ? 'border-blue-300 bg-blue-50' : ''}
+        `}
         onClick={handleCardClick}
         title={cardTitle}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0 overflow-hidden relative">
-            <h4 className="font-medium text-gray-900 text-sm mb-1 break-words line-clamp-1">
-              {card.title}
-            </h4>
-            {card.description && (
-              <div className="max-h-16 overflow-hidden relative">
-                <p className="text-sm text-gray-600 break-words whitespace-pre-wrap line-clamp-3">
-                  {card.description}
-                </p>
-                {/* Градиент для индикации обрезанного текста */}
-                <div className="absolute bottom-0 left-0 right-0 h-4 card-gradient pointer-events-none"></div>
-              </div>
-            )}
+        <div className="flex justify-between items-start mb-2">
+          <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 mr-2">
+            {cardTitle}
+          </h4>
+          <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditModalOpen(true);
+              }}
+              className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+              title="Редактировать"
+            >
+              <Edit className="h-3 w-3" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm('Удалить карточку?')) {
+                  onDelete(card.id);
+                }
+              }}
+              className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600"
+              title="Удалить"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
           </div>
+        </div>
+        
+        {cardDescription && (
+          <p className="text-xs text-gray-600 line-clamp-3 mt-1">
+            {cardDescription}
+          </p>
+        )}
+        
+        <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
+          <span>#{card.id}</span>
+          <span>Порядок: {card.sort_order}</span>
         </div>
       </div>
 
-      {/* Модальное окно редактирования карточки */}
+      {/* Модальное окно редактирования */}
       <CardModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
+        onUpdate={async (cardId, cardData) => {
+          await onUpdate(cardId, cardData);
+          setIsEditModalOpen(false);
+        }}
         card={card}
+        statusId={card.status_id}
       />
     </>
   );

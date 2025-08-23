@@ -374,8 +374,7 @@ const Dashboard: React.FC = () => {
                   <KanbanBoard
                     key={`${selectedProject.id}-${selectedPipeline?.id || 'no-pipeline'}`}
                     projectId={selectedProject.id}
-                    selectedPipeline={selectedPipeline}
-                    isPipelineSettingsOpen={isPipelineSettingsOpen}
+                    pipelineId={selectedPipeline.id}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-64">
