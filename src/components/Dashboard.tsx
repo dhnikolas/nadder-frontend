@@ -227,6 +227,7 @@ const Dashboard: React.FC = () => {
         if (!Array.isArray(data)) {
           console.warn('⚠️ API вернул не массив для проектов:', data);
           setProjects([]);
+          setIsRestoringData(false);
           return;
         }
         
@@ -259,6 +260,8 @@ const Dashboard: React.FC = () => {
         console.log('✅ Восстановление данных завершено');
       } catch (error) {
         console.error('❌ Ошибка загрузки проектов:', error);
+        // Сбрасываем состояние восстановления данных даже при ошибке
+        setIsRestoringData(false);
       } finally {
         setIsProjectsLoading(false);
       }
