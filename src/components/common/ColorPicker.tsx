@@ -47,11 +47,11 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ selectedColor, onColorChange,
     <div className="relative" ref={ref}>
       <button
         onClick={onToggle}
-        className="w-6 h-6 rounded-full border-2 border-gray-300 hover:border-gray-400 transition-colors duration-200 flex items-center justify-center"
+        className="w-4 h-4 rounded-full transition-colors duration-200 flex items-center justify-center"
         style={{ backgroundColor: selectedColor }}
         title="Изменить цвет"
       >
-        {isOpen && <Check className="w-3 h-3 text-white" />}
+        {isOpen && <Check className="w-2 h-2 text-white" />}
       </button>
 
       {isOpen && (
@@ -64,10 +64,10 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ selectedColor, onColorChange,
                   onColorChange(color);
                   onToggle();
                 }}
-                className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
+                className={`w-8 h-8 rounded-full transition-all duration-200 hover:scale-110 ${
                   selectedColor === color 
-                    ? 'border-gray-800 scale-110' 
-                    : 'border-gray-300 hover:border-gray-500'
+                    ? 'scale-110' 
+                    : ''
                 }`}
                 style={{ backgroundColor: color }}
                 title={`Выбрать цвет: ${color}`}

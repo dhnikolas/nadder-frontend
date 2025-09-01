@@ -106,7 +106,7 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   }, [onDeleteCard, status.id]);
 
   return (
-    <div className="flex-shrink-0 w-80 bg-white rounded-lg shadow-sm border border-gray-200 p-3 group">
+    <div className="flex-shrink-0 w-80 bg-white rounded-lg shadow-sm border border-gray-200 p-2 group">
       {/* Заголовок колонки */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center space-x-2">

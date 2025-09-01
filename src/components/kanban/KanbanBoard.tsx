@@ -367,9 +367,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
   }
 
   return (
-    <div className="flex-1 bg-gray-50 p-6">
+    <div className="flex-1 bg-gray-50">
       <div className="overflow-x-auto h-full">
-        <div className="flex space-x-4 min-w-max h-full">
+        <div className="flex space-x-2 min-w-max h-full">
           {statuses
             .sort((a, b) => a.sort_order - b.sort_order)
             .map((status, index) => (
