@@ -3,6 +3,7 @@
 const STORAGE_KEYS = {
   SELECTED_PROJECT: 'nadder_selected_project',
   SELECTED_PIPELINE: 'nadder_selected_pipeline',
+  PROJECT_PIPELINES: 'nadder_project_pipelines', // Сохраняем пайплайн для каждого проекта
 } as const;
 
 // Типы для сохранения в localStorage
@@ -121,6 +122,60 @@ export const clearSelectedPipeline = (): void => {
     console.log('✅ Pipeline успешно очищен из localStorage');
   } catch (error) {
     console.error('❌ Ошибка очистки выбранного pipeline:', error);
+  }
+};
+
+// Функции для работы с пайплайнами по проектам
+export const saveProjectPipeline = (projectId: number, pipeline: { id: number; name: string }): void => {
+  try {
+    const storedPipelines = getProjectPipelines();
+    storedPipelines[projectId] = {
+      id: pipeline.id,
+      name: pipeline.name,
+      timestamp: Date.now(),
+    };
+    console.log('💾 Сохраняем пайплайн для проекта:', { projectId, pipeline });
+    localStorage.setItem(STORAGE_KEYS.PROJECT_PIPELINES, JSON.stringify(storedPipelines));
+    console.log('✅ Пайплайн для проекта успешно сохранен');
+  } catch (error) {
+    console.error('❌ Ошибка сохранения пайплайна для проекта:', error);
+  }
+};
+
+export const getProjectPipeline = (projectId: number): { id: number; name: string; timestamp: number } | null => {
+  try {
+    const storedPipelines = getProjectPipelines();
+    const pipeline = storedPipelines[projectId];
+    
+    if (!pipeline) {
+      console.log('ℹ️ Пайплайн для проекта не найден:', projectId);
+      return null;
+    }
+    
+    // Проверяем, что данные не устарели (старше 30 дней)
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    if (pipeline.timestamp < thirtyDaysAgo) {
+      console.log('⚠️ Пайплайн для проекта устарел, удаляем:', projectId);
+      delete storedPipelines[projectId];
+      localStorage.setItem(STORAGE_KEYS.PROJECT_PIPELINES, JSON.stringify(storedPipelines));
+      return null;
+    }
+    
+    console.log('✅ Пайплайн для проекта валиден:', { projectId, pipeline });
+    return pipeline;
+  } catch (error) {
+    console.error('❌ Ошибка получения пайплайна для проекта:', error);
+    return null;
+  }
+};
+
+const getProjectPipelines = (): Record<number, { id: number; name: string; timestamp: number }> => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.PROJECT_PIPELINES);
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('❌ Ошибка получения пайплайнов проектов:', error);
+    return {};
   }
 };
 

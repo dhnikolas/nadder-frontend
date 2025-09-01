@@ -6,7 +6,7 @@ import ProjectSelector from './projects/ProjectSelector';
 import PipelineList from './pipelines/PipelineList';
 import KanbanBoard from './kanban/KanbanBoard';
 import { ProjectResponse, PipelineResponse } from '../types/api';
-import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData } from '../utils/storage';
+import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData, saveProjectPipeline, getProjectPipeline } from '../utils/storage';
 import apiService from '../services/api';
 
 const Dashboard: React.FC = () => {
@@ -25,11 +25,18 @@ const Dashboard: React.FC = () => {
   const handleProjectSelect = (project: ProjectResponse) => {
     console.log('🔄 Выбираем проект:', project.name);
     
+    // Проверяем, изменился ли проект
+    const isProjectChanged = selectedProject?.id !== project.id;
+    
     // Устанавливаем выбранный проект
     setSelectedProject(project);
     
-    // Сбрасываем выбранный pipeline при смене проекта
-    setSelectedPipeline(null);
+    // Сбрасываем выбранный pipeline только при смене проекта
+    if (isProjectChanged) {
+      setSelectedPipeline(null);
+      // Не очищаем сохраненный pipeline, так как теперь сохраняем для каждого проекта отдельно
+      console.log('🔄 Проект изменился, пайплайн будет восстановлен из сохраненных данных');
+    }
     
     // Сбрасываем ключ принудительной перезагрузки
     setForceReloadKey('');
@@ -37,10 +44,6 @@ const Dashboard: React.FC = () => {
     // Сохраняем выбранный проект
     saveSelectedProject(project);
     console.log('💾 Сохранен выбранный проект:', project.name);
-    
-    // Очищаем сохраненный pipeline, так как он принадлежит другому проекту
-    clearSelectedPipeline();
-    console.log('🧹 Очищен сохраненный pipeline при смене проекта');
   };
 
   const handleProjectDelete = async (projectId: number) => {
@@ -106,6 +109,9 @@ const Dashboard: React.FC = () => {
       };
       console.log('💾 Сохраняем pipeline данные:', pipelineData);
       saveSelectedPipeline(pipelineData);
+      
+      // Сохраняем пайплайн для конкретного проекта
+      saveProjectPipeline(selectedProject.id, { id: pipeline.id, name: pipeline.name });
       console.log('✅ Pipeline сохранен успешно');
     } else {
       console.log('⚠️ Pipeline не сохранен:', {
@@ -296,20 +302,20 @@ const Dashboard: React.FC = () => {
         setPipelines(sortedPipelines);
         console.log('✅ Pipelines загружены:', sortedPipelines.length);
         
-        // Пытаемся восстановить сохраненный pipeline
-        const storedPipeline = getSelectedPipeline();
-        if (storedPipeline && storedPipeline.projectId === selectedProject.id) {
-          const foundPipeline = sortedPipelines.find(p => p.id === storedPipeline.id);
+        // Пытаемся восстановить сохраненный pipeline для этого проекта
+        const storedProjectPipeline = getProjectPipeline(selectedProject.id);
+        if (storedProjectPipeline) {
+          const foundPipeline = sortedPipelines.find(p => p.id === storedProjectPipeline.id);
           if (foundPipeline) {
-            console.log('📋 Восстанавливаем сохраненный pipeline:', foundPipeline.name);
+            console.log('📋 Восстанавливаем сохраненный pipeline для проекта:', foundPipeline.name);
             setSelectedPipeline(foundPipeline);
           } else {
             // Если сохраненный pipeline не найден, выбираем первый
-            console.log('⚠️ Сохраненный pipeline не найден в списке, выбираем первый:', sortedPipelines[0].name);
+            console.log('⚠️ Сохраненный pipeline для проекта не найден в списке, выбираем первый:', sortedPipelines[0].name);
             setSelectedPipeline(sortedPipelines[0]);
           }
         } else if (sortedPipelines.length > 0) {
-          // Выбираем первый pipeline если нет сохраненного или он принадлежит другому проекту
+          // Выбираем первый pipeline если нет сохраненного для этого проекта
           console.log('🔄 Выбираем первый доступный pipeline:', sortedPipelines[0].name);
           setSelectedPipeline(sortedPipelines[0]);
         }
