@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Cloud } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import ProjectSelector from './projects/ProjectSelector';
 import PipelineList from './pipelines/PipelineList';
 import KanbanBoard from './kanban/KanbanBoard';
+import BackupManager from './backup/BackupManager';
 import { ProjectResponse, PipelineResponse } from '../types/api';
 import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData, saveProjectPipeline, getProjectPipeline } from '../utils/storage';
 import apiService from '../services/api';
@@ -16,6 +17,7 @@ const Dashboard: React.FC = () => {
   const [isPipelineSettingsOpen, setIsPipelineSettingsOpen] = useState(false);
   const [isRestoringData, setIsRestoringData] = useState(true); // Состояние восстановления данных
   const [forceReloadKey, setForceReloadKey] = useState<string>(''); // Ключ для принудительной перезагрузки Kanban
+  const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false); // Состояние менеджера бекапов
 
   // Логируем изменения состояния настроек pipeline
   useEffect(() => {
@@ -372,6 +374,14 @@ const Dashboard: React.FC = () => {
                 <span>{user?.name}</span>
               </div>
               <button
+                onClick={() => setIsBackupManagerOpen(true)}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+                title="Управление бекапами"
+              >
+                <Cloud className="h-4 w-4" />
+                <span>Бекапы</span>
+              </button>
+              <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
               >
@@ -451,6 +461,12 @@ const Dashboard: React.FC = () => {
                                     </div>
                       )}
                     </main>
+
+      {/* Менеджер бекапов */}
+      <BackupManager
+        isOpen={isBackupManagerOpen}
+        onClose={() => setIsBackupManagerOpen(false)}
+      />
     </div>
   );
 };

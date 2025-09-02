@@ -129,6 +129,33 @@ export interface PipelineCardsResponse {
   cards: CardResponse[];
 }
 
+// Типы для Yandex API
+export interface BackupSettingsRequest {
+  enabled: boolean;
+  interval_minutes: number;
+}
+
+export interface BackupSettingsResponse {
+  id: number;
+  enabled: boolean;
+  interval_minutes: number;
+  last_backup: string;
+  next_backup: string;
+}
+
+export interface BackupStatusResponse {
+  is_configured: boolean;
+  is_enabled: boolean;
+  last_backup: string;
+  next_backup: string;
+  backup_count: number;
+  interval_minutes: number;
+}
+
+export interface YandexAuthUrlResponse {
+  auth_url: string;
+}
+
 // Типы для API ответов
 export interface ApiError {
   message: string;

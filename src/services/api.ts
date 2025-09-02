@@ -19,6 +19,10 @@ import {
   BulkCardSortRequest,
   CardResponse,
   PipelineCardsResponse,
+  BackupSettingsRequest,
+  BackupSettingsResponse,
+  BackupStatusResponse,
+  YandexAuthUrlResponse,
 } from '../types/api';
 
 class ApiService {
@@ -183,6 +187,35 @@ class ApiService {
   // Массовое обновление сортировки карточек
   async bulkUpdateCardSort(projectId: number, cards: BulkCardSortRequest): Promise<void> {
     await this.api.put(`/projects/${projectId}/cards/bulk-sort`, cards);
+  }
+
+  // Yandex API методы
+  async getYandexAuthUrl(): Promise<YandexAuthUrlResponse> {
+    const response: AxiosResponse<YandexAuthUrlResponse> = await this.api.get('/yandex/auth-url');
+    console.log('🔗 API ответ для auth-url:', response.data);
+    return response.data;
+  }
+
+  async getBackupStatus(): Promise<BackupStatusResponse> {
+    const response: AxiosResponse<BackupStatusResponse> = await this.api.get('/yandex/backup/status');
+    return response.data;
+  }
+
+
+
+  async updateBackupSettings(data: BackupSettingsRequest): Promise<BackupSettingsResponse> {
+    const response: AxiosResponse<BackupSettingsResponse> = await this.api.put('/yandex/backup/settings', data);
+    return response.data;
+  }
+
+  async createManualBackup(): Promise<{ message: string }> {
+    const response: AxiosResponse<{ message: string }> = await this.api.post('/yandex/backup/create');
+    return response.data;
+  }
+
+  async disconnectYandex(): Promise<{ message: string }> {
+    const response: AxiosResponse<{ message: string }> = await this.api.delete('/yandex/disconnect');
+    return response.data;
   }
 }
 
