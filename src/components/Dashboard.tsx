@@ -7,8 +7,8 @@ import PipelineList from './pipelines/PipelineList';
 import KanbanBoard from './kanban/KanbanBoard';
 import BackupManager from './backup/BackupManager';
 import CardSearch from './common/CardSearch';
-import CardModal from './modals/CardModal';
-import { ProjectResponse, PipelineResponse, CardSearchResult, CardResponse } from '../types/api';
+
+import { ProjectResponse, PipelineResponse, CardSearchResult } from '../types/api';
 import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData, saveProjectPipeline, getProjectPipeline } from '../utils/storage';
 import apiService from '../services/api';
 
@@ -20,7 +20,8 @@ const Dashboard: React.FC = () => {
   const [isRestoringData, setIsRestoringData] = useState(true); // Состояние восстановления данных
   const [forceReloadKey, setForceReloadKey] = useState<string>(''); // Ключ для принудительной перезагрузки Kanban
   const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false); // Состояние менеджера бекапов
-  const [selectedCardForModal, setSelectedCardForModal] = useState<CardResponse | null>(null); // Карточка для модального окна
+  const [cardToOpen, setCardToOpen] = useState<number | null>(null); // ID карточки для автоматического открытия
+
 
   // Логируем изменения состояния настроек pipeline
   useEffect(() => {
@@ -124,14 +125,14 @@ const Dashboard: React.FC = () => {
         saveProjectPipeline(targetProject.id, targetPipeline);
       }
       
-      // Загружаем полную информацию о карточке
-      const fullCard = await apiService.getCard(targetProject.id, card.id);
+      // Устанавливаем ID карточки для автоматического открытия
+      setCardToOpen(card.id);
       
-      // Открываем модальное окно с карточкой
-      setSelectedCardForModal(fullCard);
+      // Принудительно обновляем Kanban, чтобы он перезагрузил карточки
+      setForceReloadKey(Date.now().toString());
       
     } catch (error) {
-      console.error('Ошибка загрузки пайплайнов или карточки:', error);
+      console.error('Ошибка загрузки пайплайнов:', error);
     }
   };
 
@@ -486,6 +487,8 @@ const Dashboard: React.FC = () => {
                     key={forceReloadKey || `${selectedProject.id}-${selectedPipeline?.id || 'no-pipeline'}`}
                     projectId={selectedProject.id}
                     pipelineId={selectedPipeline.id}
+                    cardToOpen={cardToOpen}
+                    onCardOpened={() => setCardToOpen(null)}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-64">
@@ -519,23 +522,7 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsBackupManagerOpen(false)}
       />
 
-      {/* Модальное окно карточки из поиска */}
-      {selectedCardForModal && (
-        <CardModal
-          isOpen={!!selectedCardForModal}
-          onClose={() => setSelectedCardForModal(null)}
-          card={selectedCardForModal}
-          onUpdate={async (cardId, cardData) => {
-            // Обновляем Kanban после изменения карточки
-            setForceReloadKey(Date.now().toString());
-          }}
-          onDelete={async (cardId) => {
-            // Обновляем Kanban после удаления карточки
-            setForceReloadKey(Date.now().toString());
-            setSelectedCardForModal(null);
-          }}
-        />
-      )}
+
     </div>
   );
 };

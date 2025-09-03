@@ -154,6 +154,7 @@ const Card: React.FC<CardProps> = React.memo(({
     <>
       <div
         ref={dragDropRef}
+        data-card-id={card.id}
         className={`
           bg-white border border-gray-200 rounded-lg p-3 cursor-pointer
           hover:shadow-md transition-all duration-200

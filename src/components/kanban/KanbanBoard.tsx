@@ -6,13 +6,15 @@ import StatusColumn from './StatusColumn';
 interface KanbanBoardProps {
   pipelineId: number;
   projectId: number;
+  cardToOpen?: number | null;
+  onCardOpened?: () => void;
 }
 
 interface CardsData {
   [statusId: number]: CardResponse[];
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardToOpen, onCardOpened }) => {
   console.log('🎯 KanbanBoard component render with:', { projectId, pipelineId });
   
   const [statuses, setStatuses] = useState<StatusResponse[]>([]);
@@ -104,6 +106,39 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId }) => {
       console.log('⏭️ Skipping loadData - missing projectId or pipelineId');
     }
   }, [loadData, projectId, pipelineId]);
+
+  // Автоматическое открытие карточки из поиска
+  useEffect(() => {
+    if (cardToOpen && !isLoading && Object.keys(cards).length > 0) {
+      console.log('🔍 Автоматически открываем карточку:', cardToOpen);
+      
+      // Находим карточку во всех статусах
+      let targetCard: CardResponse | null = null;
+      for (const statusCards of Object.values(cards)) {
+        const card = statusCards.find((c: CardResponse) => c.id === cardToOpen);
+        if (card) {
+          targetCard = card;
+          break;
+        }
+      }
+      
+      if (targetCard) {
+        // Симулируем клик по карточке
+        const cardElement = document.querySelector(`[data-card-id="${cardToOpen}"]`);
+        if (cardElement) {
+          (cardElement as HTMLElement).click();
+          console.log('✅ Карточка автоматически открыта:', targetCard.title);
+        }
+        
+        // Уведомляем Dashboard, что карточка открыта
+        if (onCardOpened) {
+          onCardOpened();
+        }
+      } else {
+        console.log('⚠️ Карточка не найдена для автоматического открытия:', cardToOpen);
+      }
+    }
+  }, [cardToOpen, isLoading, cards, onCardOpened]);
 
   // Логирование mount/unmount компонента
   useEffect(() => {
