@@ -137,6 +137,7 @@ const Dashboard: React.FC = () => {
         return;
       }
       
+      // Сортируем по sort_order
       const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
       setPipelines(sortedPipelines);
       console.log('✅ Список pipelines обновлен:', sortedPipelines.length, 'элементов');
@@ -303,6 +304,7 @@ const Dashboard: React.FC = () => {
           return;
         }
         
+        // Сортируем по sort_order
         const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
         setPipelines(sortedPipelines);
         console.log('✅ Pipelines загружены:', sortedPipelines.length);

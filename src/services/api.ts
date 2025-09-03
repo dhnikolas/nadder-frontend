@@ -122,6 +122,12 @@ class ApiService {
     await this.api.delete(`/projects/${projectId}/pipelines/${id}`);
   }
 
+  // Массовое обновление сортировки пайплайнов
+  async bulkUpdatePipelineSort(projectId: number, pipelines: Array<{id: number, sort_order: number}>): Promise<{message: string}> {
+    const response: AxiosResponse<{message: string}> = await this.api.put(`/projects/${projectId}/pipelines/bulk-sort`, { pipelines });
+    return response.data;
+  }
+
   // Статусы
   async getStatuses(projectId: number, pipelineId: number): Promise<StatusResponse[]> {
     const response: AxiosResponse<StatusResponse[]> = await this.api.get(`/projects/${projectId}/pipelines/${pipelineId}/statuses`);
