@@ -156,6 +156,39 @@ export interface YandexAuthUrlResponse {
   auth_url: string;
 }
 
+// Поиск карточек
+export interface CardSearchRequest {
+  query: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface CardSearchResult {
+  id: number;
+  title: string;
+  description: string;
+  status_id: number;
+  user_id: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  project_id: number;
+  project_name: string;
+  pipeline_id: number;
+  pipeline_name: string;
+  status_name: string;
+  match_fragment: string;
+  match_field: string;
+}
+
+export interface CardSearchResponse {
+  cards: CardSearchResult[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 // Типы для API ответов
 export interface ApiError {
   message: string;

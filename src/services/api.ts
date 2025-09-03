@@ -23,6 +23,8 @@ import {
   BackupSettingsResponse,
   BackupStatusResponse,
   YandexAuthUrlResponse,
+  CardSearchRequest,
+  CardSearchResponse,
 } from '../types/api';
 
 class ApiService {
@@ -221,6 +223,12 @@ class ApiService {
 
   async disconnectYandex(): Promise<{ message: string }> {
     const response: AxiosResponse<{ message: string }> = await this.api.delete('/yandex/disconnect');
+    return response.data;
+  }
+
+  // Поиск карточек
+  async searchCards(data: CardSearchRequest): Promise<CardSearchResponse> {
+    const response: AxiosResponse<CardSearchResponse> = await this.api.post('/cards/search', data);
     return response.data;
   }
 }

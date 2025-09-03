@@ -6,7 +6,9 @@ import ProjectSelector from './projects/ProjectSelector';
 import PipelineList from './pipelines/PipelineList';
 import KanbanBoard from './kanban/KanbanBoard';
 import BackupManager from './backup/BackupManager';
-import { ProjectResponse, PipelineResponse } from '../types/api';
+import CardSearch from './common/CardSearch';
+import CardModal from './modals/CardModal';
+import { ProjectResponse, PipelineResponse, CardSearchResult, CardResponse } from '../types/api';
 import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData, saveProjectPipeline, getProjectPipeline } from '../utils/storage';
 import apiService from '../services/api';
 
@@ -18,6 +20,7 @@ const Dashboard: React.FC = () => {
   const [isRestoringData, setIsRestoringData] = useState(true); // Состояние восстановления данных
   const [forceReloadKey, setForceReloadKey] = useState<string>(''); // Ключ для принудительной перезагрузки Kanban
   const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false); // Состояние менеджера бекапов
+  const [selectedCardForModal, setSelectedCardForModal] = useState<CardResponse | null>(null); // Карточка для модального окна
 
   // Логируем изменения состояния настроек pipeline
   useEffect(() => {
@@ -88,6 +91,47 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('❌ Ошибка удаления проекта:', error);
       throw error; // Пробрасываем ошибку дальше
+    }
+  };
+
+  const handleCardSearchSelect = async (card: CardSearchResult) => {
+    console.log('🔍 Выбрана карточка из поиска:', card);
+    
+    // Находим проект по ID
+    const targetProject = projects.find(p => p.id === card.project_id);
+    if (!targetProject) {
+      console.error('Проект не найден:', card.project_id);
+      return;
+    }
+    
+    // Переключаемся на нужный проект
+    if (selectedProject?.id !== targetProject.id) {
+      console.log('🔄 Переключаемся на проект:', targetProject.name);
+      setSelectedProject(targetProject);
+      saveSelectedProject(targetProject);
+    }
+    
+    // Загружаем пайплайны для проекта
+    try {
+      const pipelines = await apiService.getPipelines(targetProject.id);
+      const sortedPipelines = pipelines.sort((a, b) => a.sort_order - b.sort_order);
+      
+      // Находим нужный пайплайн
+      const targetPipeline = sortedPipelines.find(p => p.id === card.pipeline_id);
+      if (targetPipeline) {
+        console.log('🔄 Переключаемся на пайплайн:', targetPipeline.name);
+        setSelectedPipeline(targetPipeline);
+        saveProjectPipeline(targetProject.id, targetPipeline);
+      }
+      
+      // Загружаем полную информацию о карточке
+      const fullCard = await apiService.getCard(targetProject.id, card.id);
+      
+      // Открываем модальное окно с карточкой
+      setSelectedCardForModal(fullCard);
+      
+    } catch (error) {
+      console.error('Ошибка загрузки пайплайнов или карточки:', error);
     }
   };
 
@@ -355,18 +399,23 @@ const Dashboard: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-900">Nadder</h1>
             </div>
 
-            {/* Выбор проекта */}
-            <div className="flex-1 mx-8">
-              <ProjectSelector
-                projects={projects}
-                selectedProject={selectedProject}
-                onProjectSelect={handleProjectSelect}
-                onProjectDelete={handleProjectDelete}
-                onProjectCreate={(project) => {
-                  console.log('🆕 Новый проект создан, добавляем в список:', project.name);
-                  setProjects(prev => [...prev, project].sort((a, b) => a.name.localeCompare(b.name)));
-                }}
-              />
+            {/* Выбор проекта и поиск */}
+            <div className="flex-1 mx-8 flex items-center space-x-4">
+              <div className="flex-1">
+                <ProjectSelector
+                  projects={projects}
+                  selectedProject={selectedProject}
+                  onProjectSelect={handleProjectSelect}
+                  onProjectDelete={handleProjectDelete}
+                  onProjectCreate={(project) => {
+                    console.log('🆕 Новый проект создан, добавляем в список:', project.name);
+                    setProjects(prev => [...prev, project].sort((a, b) => a.name.localeCompare(b.name)));
+                  }}
+                />
+              </div>
+              <div className="w-80">
+                <CardSearch onCardSelect={handleCardSearchSelect} />
+              </div>
             </div>
 
             {/* Пользователь и выход */}
@@ -469,6 +518,24 @@ const Dashboard: React.FC = () => {
         isOpen={isBackupManagerOpen}
         onClose={() => setIsBackupManagerOpen(false)}
       />
+
+      {/* Модальное окно карточки из поиска */}
+      {selectedCardForModal && (
+        <CardModal
+          isOpen={!!selectedCardForModal}
+          onClose={() => setSelectedCardForModal(null)}
+          card={selectedCardForModal}
+          onUpdate={async (cardId, cardData) => {
+            // Обновляем Kanban после изменения карточки
+            setForceReloadKey(Date.now().toString());
+          }}
+          onDelete={async (cardId) => {
+            // Обновляем Kanban после удаления карточки
+            setForceReloadKey(Date.now().toString());
+            setSelectedCardForModal(null);
+          }}
+        />
+      )}
     </div>
   );
 };
