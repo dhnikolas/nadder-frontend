@@ -30,7 +30,9 @@ const CardSearch: React.FC<CardSearchProps> = ({ onCardSelect }) => {
         page_size: 10
       });
 
-      setResults(response.cards);
+      // Обрабатываем случай, когда API возвращает null или undefined
+      const cards = response?.cards || [];
+      setResults(cards);
       setIsOpen(true);
     } catch (error) {
       console.error('Ошибка поиска карточек:', error);
@@ -137,7 +139,11 @@ const CardSearch: React.FC<CardSearchProps> = ({ onCardSelect }) => {
             </div>
           ) : results.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
-              <p className="text-sm">Карточки не найдены</p>
+              <div className="flex flex-col items-center space-y-2">
+                <FileText className="h-8 w-8 text-gray-300" />
+                <p className="text-sm font-medium">Карточки не найдены</p>
+                <p className="text-xs text-gray-400">Попробуйте изменить поисковый запрос</p>
+              </div>
             </div>
           ) : (
             <div className="py-1">

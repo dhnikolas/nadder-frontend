@@ -229,7 +229,16 @@ class ApiService {
   // Поиск карточек
   async searchCards(data: CardSearchRequest): Promise<CardSearchResponse> {
     const response: AxiosResponse<CardSearchResponse> = await this.api.post('/cards/search', data);
-    return response.data;
+    
+    // Обеспечиваем, что всегда возвращаем корректную структуру
+    const result = response.data;
+    return {
+      cards: result?.cards || [],
+      total: result?.total || 0,
+      page: result?.page || 1,
+      page_size: result?.page_size || 10,
+      total_pages: result?.total_pages || 0
+    };
   }
 }
 
