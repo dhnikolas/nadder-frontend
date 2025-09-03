@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Settings, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Settings } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
 import { PipelineResponse, CreatePipelineRequest } from '../../types/api';
 import apiService from '../../services/api';
@@ -129,18 +129,6 @@ const DraggablePipeline: React.FC<DraggablePipelineProps> = ({
       onClick={() => onSelect(pipeline)}
     >
       <div className="flex items-center space-x-3">
-        <div
-          className="cursor-move p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-          title="Перетащить для изменения порядка"
-        >
-          <GripVertical className="h-4 w-4" />
-        </div>
-        
-        <div
-          className="w-3 h-3 rounded-full flex-shrink-0"
-          style={{ backgroundColor: pipeline.color }}
-        />
-        
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-medium text-gray-900 truncate">
             {pipeline.name}
