@@ -89,7 +89,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-20">
       <div className="flex items-center space-x-2">
         <button
           onClick={() => setIsOpen(!isOpen)}

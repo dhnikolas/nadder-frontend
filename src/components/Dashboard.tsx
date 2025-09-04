@@ -387,9 +387,9 @@ const Dashboard: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col">
       {/* Верхняя панель */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Логотип и название */}
@@ -445,76 +445,78 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Основной контент */}
-      <main className="w-full px-2 sm:px-4 lg:px-6 py-4">
-        {isRestoringData ? (
-          // Индикатор восстановления данных
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Восстанавливаем сохраненные настройки...</p>
-            </div>
-          </div>
-        ) : selectedProject ? (
-            <div className="flex space-x-4">
-              {/* Левая панель со списком pipeline */}
-              <div className="flex-shrink-0">
-                <PipelineList
-                  key={selectedProject.id}
-                  projectId={selectedProject.id}
-                  pipelines={pipelines}
-                  selectedPipeline={selectedPipeline}
-                  onPipelineSelect={handlePipelineSelect}
-                  onSettingsOpen={setIsPipelineSettingsOpen}
-                  onPipelineUpdate={handlePipelineUpdate}
-                  onStatusesUpdate={() => {
-                    console.log('🔄 Статусы обновлены в настройках, перезагружаем данные Kanban');
-                    // Принудительно перезагружаем данные Kanban доски
-                    if (selectedPipeline) {
-                      // Принудительно перезагружаем данные, изменяя key
-                      // Это заставит React пересоздать KanbanBoard компонент
-                      const newKey = `${selectedProject.id}-${selectedPipeline.id}-${Date.now()}`;
-                      setForceReloadKey(newKey);
-                    }
-                  }}
-                />
+      {/* Основной контент с горизонтальным скроллом */}
+      <main className="flex-1 overflow-x-auto">
+        <div className="px-2 sm:px-4 lg:px-6 py-4">
+          {isRestoringData ? (
+            // Индикатор восстановления данных
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Восстанавливаем сохраненные настройки...</p>
               </div>
-
-              {/* Основная область с Kanban доской */}
-              <div className="flex-1">
-                {selectedPipeline ? (
-                  <KanbanBoard
-                    key={forceReloadKey || `${selectedProject.id}-${selectedPipeline?.id || 'no-pipeline'}`}
+            </div>
+          ) : selectedProject ? (
+              <div className="flex min-w-max">
+                {/* Левая панель со списком pipeline */}
+                <div className="flex-shrink-0">
+                  <PipelineList
+                    key={selectedProject.id}
                     projectId={selectedProject.id}
-                    pipelineId={selectedPipeline.id}
-                    cardToOpen={cardToOpen}
-                    onCardOpened={() => setCardToOpen(null)}
+                    pipelines={pipelines}
+                    selectedPipeline={selectedPipeline}
+                    onPipelineSelect={handlePipelineSelect}
+                    onSettingsOpen={setIsPipelineSettingsOpen}
+                    onPipelineUpdate={handlePipelineUpdate}
+                    onStatusesUpdate={() => {
+                      console.log('🔄 Статусы обновлены в настройках, перезагружаем данные Kanban');
+                      // Принудительно перезагружаем данные Kanban доски
+                      if (selectedPipeline) {
+                        // Принудительно перезагружаем данные, изменяя key
+                        // Это заставит React пересоздать KanbanBoard компонент
+                        const newKey = `${selectedProject.id}-${selectedPipeline.id}-${Date.now()}`;
+                        setForceReloadKey(newKey);
+                      }
+                    }}
                   />
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-center text-gray-500">
-                      <p className="text-lg">Выберите pipeline для отображения Kanban доски</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-full max-w-2xl mx-auto">
-                <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-primary-600 text-2xl font-bold">N</span>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Добро пожаловать в Nadder
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Выберите проект для начала работы или создайте новый
-                </p>
+
+                {/* Основная область с Kanban доской */}
+                <div className="flex-1 min-w-0">
+                  {selectedPipeline ? (
+                    <KanbanBoard
+                      key={forceReloadKey || `${selectedProject.id}-${selectedPipeline?.id || 'no-pipeline'}`}
+                      projectId={selectedProject.id}
+                      pipelineId={selectedPipeline.id}
+                      cardToOpen={cardToOpen}
+                      onCardOpened={() => setCardToOpen(null)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-center text-gray-500">
+                        <p className="text-lg">Выберите pipeline для отображения Kanban доски</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-                                    </div>
-                      )}
-                    </main>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-full max-w-2xl mx-auto">
+                  <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-primary-600 text-2xl font-bold">N</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Добро пожаловать в Nadder
+                  </h2>
+                  <p className="text-gray-600 mb-6">
+                    Выберите проект для начала работы или создайте новый
+                  </p>
+                </div>
+              </div>
+            )}
+        </div>
+      </main>
 
       {/* Менеджер бекапов */}
       <BackupManager

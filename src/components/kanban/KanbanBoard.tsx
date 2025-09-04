@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatusResponse, CardResponse, CreateCardRequest, BulkCardSortRequest } from '../../types/api';
 import { apiService } from '../../services/api';
 import StatusColumn from './StatusColumn';
+import CreateStatusButton from './CreateStatusButton';
 
 interface KanbanBoardProps {
   pipelineId: number;
@@ -259,6 +260,33 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
     }
   }, [projectId, pipelineId]);
 
+  // Создание статуса
+  const handleCreateStatus = useCallback(async (name: string) => {
+    try {
+      // Находим максимальный sort_order среди существующих статусов
+      const maxSortOrder = statuses.length > 0 
+        ? Math.max(...statuses.map(s => s.sort_order)) 
+        : 0;
+      
+      const newStatus = await apiService.createStatus(projectId, pipelineId, {
+        name,
+        color: '#3B82F6', // Синий цвет по умолчанию
+        sort_order: maxSortOrder + 1 // Добавляем в конец
+      });
+      
+      setStatuses(prev => [...prev, newStatus].sort((a, b) => a.sort_order - b.sort_order));
+      setCards(prev => ({
+        ...prev,
+        [newStatus.id]: []
+      }));
+      
+      console.log('✅ Status created:', newStatus);
+    } catch (error) {
+      console.error('❌ Error creating status:', error);
+      throw error;
+    }
+  }, [projectId, pipelineId, statuses]);
+
   // Удаление карточки
   const handleDeleteCard = useCallback(async (statusId: number, cardId: number) => {
     try {
@@ -402,26 +430,30 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   }
 
   return (
-    <div className="flex-1 bg-gray-50">
-      <div className="overflow-x-auto h-full">
-        <div className="flex space-x-2 min-w-max h-full">
-          {statuses
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((status, index) => (
-              <StatusColumn
-                key={`status-${status.id}`}
-                status={status}
-                cards={cards[status.id] || []}
-                index={index}
-                onCreateCard={handleCreateCard}
-                onUpdateCard={handleUpdateCard}
-                onDeleteCard={handleDeleteCard}
-                moveCardInUI={moveCardInUI}
-                saveChangesToAPI={saveChangesToAPI}
-                onUpdateStatus={handleUpdateStatus}
-              />
-            ))}
-        </div>
+    <div className="flex-1 bg-gray-50 ml-2">
+      <div className="flex space-x-2 h-full pb-4">
+        {statuses
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((status, index) => (
+            <StatusColumn
+              key={`status-${status.id}`}
+              status={status}
+              cards={cards[status.id] || []}
+              index={index}
+              onCreateCard={handleCreateCard}
+              onUpdateCard={handleUpdateCard}
+              onDeleteCard={handleDeleteCard}
+              moveCardInUI={moveCardInUI}
+              saveChangesToAPI={saveChangesToAPI}
+              onUpdateStatus={handleUpdateStatus}
+            />
+          ))}
+        
+        {/* Кнопка создания нового статуса */}
+        <CreateStatusButton
+          onCreateStatus={handleCreateStatus}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

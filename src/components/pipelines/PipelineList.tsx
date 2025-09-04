@@ -301,7 +301,7 @@ const PipelineList: React.FC<PipelineListProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 w-64">
+    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 w-64 flex flex-col overflow-visible relative z-10">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900">Pipeline</h3>
         <button
