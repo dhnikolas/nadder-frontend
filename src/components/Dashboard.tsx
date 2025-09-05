@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, Cloud } from 'lucide-react';
+import { LogOut, User, Cloud, Key } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import ProjectSelector from './projects/ProjectSelector';
@@ -7,6 +7,7 @@ import PipelineList from './pipelines/PipelineList';
 import KanbanBoard from './kanban/KanbanBoard';
 import BackupManager from './backup/BackupManager';
 import CardSearch from './common/CardSearch';
+import ChangePasswordModal from './modals/ChangePasswordModal';
 
 import { ProjectResponse, PipelineResponse, CardSearchResult } from '../types/api';
 import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData, saveProjectPipeline, getProjectPipeline } from '../utils/storage';
@@ -21,12 +22,31 @@ const Dashboard: React.FC = () => {
   const [forceReloadKey, setForceReloadKey] = useState<string>(''); // Ключ для принудительной перезагрузки Kanban
   const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false); // Состояние менеджера бекапов
   const [cardToOpen, setCardToOpen] = useState<number | null>(null); // ID карточки для автоматического открытия
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); // Состояние выпадающего меню пользователя
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false); // Состояние модального окна смены пароля
 
 
   // Логируем изменения состояния настроек pipeline
   useEffect(() => {
     console.log('🔧 Dashboard: Состояние настроек pipeline изменилось:', isPipelineSettingsOpen, 'тип:', typeof isPipelineSettingsOpen);
   }, [isPipelineSettingsOpen]);
+
+  // Закрытие выпадающего меню при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isUserMenuOpen) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.user-menu-container')) {
+          setIsUserMenuOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   const handleProjectSelect = (project: ProjectResponse) => {
     console.log('🔄 Выбираем проект:', project.name);
@@ -419,27 +439,54 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Пользователь и выход */}
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-700">
+            {/* Пользователь и меню */}
+            <div className="relative user-menu-container">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              >
                 <User className="h-4 w-4" />
                 <span>{user?.name}</span>
-              </div>
-              <button
-                onClick={() => setIsBackupManagerOpen(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-                title="Управление бекапами"
-              >
-                <Cloud className="h-4 w-4" />
-                <span>Бекапы</span>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Выйти</span>
-              </button>
+              
+              {/* Выпадающее меню */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                  <button
+                    onClick={() => {
+                      setIsChangePasswordOpen(true);
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <Key className="h-4 w-4" />
+                    <span>Сменить пароль</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsBackupManagerOpen(true);
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <Cloud className="h-4 w-4" />
+                    <span>Бекапы</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Выйти</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -524,6 +571,11 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsBackupManagerOpen(false)}
       />
 
+      {/* Модальное окно смены пароля */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
 
     </div>
   );

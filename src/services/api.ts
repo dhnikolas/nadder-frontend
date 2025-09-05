@@ -4,6 +4,8 @@ import {
   UserRegisterRequest,
   AuthResponse,
   UserResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
   CreateProjectRequest,
   UpdateProjectRequest,
   ProjectResponse,
@@ -71,6 +73,11 @@ class ApiService {
 
   async register(data: UserRegisterRequest): Promise<UserResponse> {
     const response: AxiosResponse<UserResponse> = await this.api.post('/auth/register', data);
+    return response.data;
+  }
+
+  async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+    const response: AxiosResponse<ChangePasswordResponse> = await this.api.put('/auth/change-password', data);
     return response.data;
   }
 

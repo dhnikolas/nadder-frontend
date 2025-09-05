@@ -21,6 +21,15 @@ export interface AuthResponse {
   user: UserResponse;
 }
 
+export interface ChangePasswordRequest {
+  old_password: string;
+  new_password: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+}
+
 // Типы для проектов
 export interface CreateProjectRequest {
   name: string;
