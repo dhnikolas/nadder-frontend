@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DragIndicatorProvider } from './contexts/DragIndicatorContext';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import Dashboard from './components/Dashboard';
@@ -77,7 +78,9 @@ const App: React.FC = () => {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <DragIndicatorProvider>
+                      <Dashboard />
+                    </DragIndicatorProvider>
                   </ProtectedRoute>
                 }
               />

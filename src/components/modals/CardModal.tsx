@@ -28,8 +28,25 @@ const CardModal: React.FC<CardModalProps> = ({
     if (card) {
       setTitle(card.title);
       setDescription(card.description || '');
+    } else {
+      // Сбрасываем поля при создании новой карточки
+      setTitle('');
+      setDescription('');
     }
   }, [card]);
+
+  // Сбрасываем поля при открытии модального окна
+  useEffect(() => {
+    if (isOpen) {
+      if (card) {
+        setTitle(card.title);
+        setDescription(card.description || '');
+      } else {
+        setTitle('');
+        setDescription('');
+      }
+    }
+  }, [isOpen, card]);
 
   const isEditMode = !!card;
 

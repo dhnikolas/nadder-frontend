@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { CardResponse } from '../../types/api';
 import { Trash2 } from 'lucide-react';
-import CardModal from '../modals/CardModal';
+import { useDragIndicator } from '../../contexts/DragIndicatorContext';
 
 interface CardProps {
   card: CardResponse;
@@ -11,6 +11,7 @@ interface CardProps {
   onDelete: (cardId: number) => Promise<void>;
   moveCardInUI: (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => Promise<void>;
   saveChangesToAPI: (cardId: number, fromStatusId: number, toStatusId: number) => Promise<void>;
+  onCardClick: (card: CardResponse) => void;
 }
 
 interface DragItem {
@@ -26,25 +27,37 @@ const Card: React.FC<CardProps> = React.memo(({
   onUpdate, 
   onDelete, 
   moveCardInUI,
-  saveChangesToAPI
+  saveChangesToAPI,
+  onCardClick
 }) => {
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const { activeIndicator, setActiveIndicator, clearAllIndicators } = useDragIndicator();
+  
+  const indicatorId = `card-${card.id}`;
 
   // Drag functionality
   const [{ isDragging }, drag] = useDrag({
     type: 'CARD',
-    item: (): DragItem => ({
-      type: 'CARD',
-      cardId: card.id,
-      fromStatusId: card.status_id,
-      fromIndex: index,
-    }),
+    item: (): DragItem => {
+      // Очищаем все индикаторы при начале drag
+      clearAllIndicators();
+      
+      return {
+        type: 'CARD',
+        cardId: card.id,
+        fromStatusId: card.status_id,
+        fromIndex: index,
+      };
+    },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
     end: (item, monitor) => {
       console.log('🃏 Drag ended for card:', card.title);
+      
+      // Очищаем все индикаторы при завершении drag
+      clearAllIndicators();
       
       // Проверяем, была ли карточка успешно перемещена
       const dropResult = monitor.getDropResult();
@@ -57,14 +70,12 @@ const Card: React.FC<CardProps> = React.memo(({
     },
   });
 
+
   // Drop functionality
   const [{ isOver }, drop] = useDrop({
     accept: 'CARD',
     hover: (item: DragItem, monitor) => {
-      console.log('🎯 Hover event:', { item, currentCard: card.id, currentIndex: index });
-      
       if (!ref.current) {
-        console.log('❌ No ref.current');
         return;
       }
       
@@ -75,46 +86,46 @@ const Card: React.FC<CardProps> = React.memo(({
 
       // Не заменяем элементы самими собой
       if (item.cardId === card.id) {
-        console.log('🚫 Same card, skipping');
+        return;
+      }
+
+      // Проверяем, что карточки в одном статусе для сортировки
+      if (dragStatusId !== hoverStatusId) {
         return;
       }
 
       // Определяем позицию курсора относительно элемента
       const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const hoverHeight = hoverBoundingRect.bottom - hoverBoundingRect.top;
+      
       const clientOffset = monitor.getClientOffset();
       
       if (!clientOffset) {
-        console.log('❌ No client offset');
         return;
       }
       
-      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      const hoverClientY = clientOffset.y;
 
-      // При перетаскивании вниз, срабатываем только когда курсор ниже 50%
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-        console.log('⬇️ Dragging down but cursor above middle, skipping');
-        return;
+            // Фиксированный порог в пикселях для карточек разной высоты
+            const threshold = 10; // 10px порог для всех карточек
+      const topThreshold = hoverBoundingRect.top + threshold;
+      const bottomThreshold = hoverBoundingRect.bottom - threshold;
+
+      // Логика показа индикаторов при пересечении 10px зоны в любом направлении
+      if (dragIndex < hoverIndex && hoverClientY < topThreshold) {
+        // Перетаскиваем вниз, курсор в верхних 10px - показываем индикатор сверху
+        console.log('⬇️ Перетаскивание вниз - показываем top индикатор');
+        setActiveIndicator(`${indicatorId}-top`);
+      } else if (dragIndex > hoverIndex && hoverClientY > bottomThreshold) {
+        // Перетаскиваем вверх, курсор в нижних 10px - показываем индикатор снизу
+        console.log('⬆️ Перетаскивание вверх - показываем bottom индикатор');
+        setActiveIndicator(`${indicatorId}-bottom`);
+      } else {
+        // Скрываем индикатор если курсор не в зоне срабатывания
+        if (activeIndicator?.startsWith(indicatorId)) {
+          setActiveIndicator(null);
+        }
       }
-      
-      // При перетаскивании вверх, срабатываем только когда курсор выше 50%
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-        console.log('⬆️ Dragging up but cursor below middle, skipping');
-        return;
-      }
-
-      // Выполняем перемещение в UI
-      console.log('🔄 Moving card in hover:', {
-        cardId: item.cardId,
-        from: { statusId: dragStatusId, index: dragIndex },
-        to: { statusId: hoverStatusId, index: hoverIndex }
-      });
-
-      moveCardInUI(item.cardId, dragStatusId, hoverStatusId, hoverIndex);
-
-      // Обновляем индексы для последующих hover events
-      item.fromStatusId = hoverStatusId;
-      item.fromIndex = hoverIndex;
     },
     drop: (item: DragItem) => {
       console.log('🎯 Card drop event:', { 
@@ -122,8 +133,33 @@ const Card: React.FC<CardProps> = React.memo(({
         draggedItem: { cardId: item.cardId, fromStatusId: item.fromStatusId } 
       });
       
-      // Сохраняем изменения в API
-      saveChangesToAPI(item.cardId, item.fromStatusId, card.status_id);
+      // Определяем позицию вставки на основе последнего показанного индикатора
+      let newIndex = index;
+      console.log('🎯 Drop логика:', { 
+        activeIndicator, 
+        currentIndex: index, 
+        dragIndex: item.fromIndex,
+        hoverIndex: index 
+      });
+      
+      if (activeIndicator?.includes('bottom')) {
+        // При перетаскивании вверх (bottom индикатор) - вставляем после текущей карточки
+        newIndex = index + 1;
+        console.log('⬆️ Перетаскивание вверх - вставляем после карточки:', newIndex);
+      } else if (activeIndicator?.includes('top')) {
+        // При перетаскивании вниз (top индикатор) - вставляем перед текущей карточкой
+        newIndex = index;
+        console.log('⬇️ Перетаскивание вниз - вставляем перед карточкой:', newIndex);
+      }
+      
+      // Выполняем перемещение только при drop
+      if (item.fromStatusId !== card.status_id || newIndex !== item.fromIndex) {
+        moveCardInUI(item.cardId, item.fromStatusId, card.status_id, newIndex);
+        saveChangesToAPI(item.cardId, item.fromStatusId, card.status_id);
+      }
+      
+      // Очищаем все индикаторы
+      clearAllIndicators();
       
       return { cardId: card.id, statusId: card.status_id, type: 'CARD' };
     },
@@ -143,9 +179,17 @@ const Card: React.FC<CardProps> = React.memo(({
   const handleCardClick = () => {
     if (!isDragging) {
       console.log('🃏 Card clicked - opening modal:', card.title);
-      setIsEditModalOpen(true);
+      onCardClick(card);
     }
   };
+
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovered(false);
+  }, []);
 
   const cardTitle = card.title || 'Без названия';
   const cardDescription = card.description || '';
@@ -156,18 +200,21 @@ const Card: React.FC<CardProps> = React.memo(({
         ref={dragDropRef}
         data-card-id={card.id}
         className={`
-          bg-white border border-gray-200 rounded-lg p-3 cursor-pointer
+          bg-white border border-gray-200 rounded-lg px-3 py-2 cursor-pointer
           hover:shadow-md transition-all duration-200
           ${isDragging ? 'opacity-50 rotate-2 shadow-lg' : ''}
           ${isOver ? 'border-blue-300 bg-blue-50' : ''}
         `}
+        style={{ minHeight: '90px', height: '90px' }}
         onClick={handleCardClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         title={cardTitle}
       >
-        <div className="flex justify-between items-start mb-2">
-          <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 mr-2">
-            {cardTitle}
-          </h4>
+        <div className="flex justify-between items-start mb-2 h-6">
+                <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 mr-2 leading-tight">
+                  {cardTitle}
+                </h4>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -175,36 +222,35 @@ const Card: React.FC<CardProps> = React.memo(({
                 onDelete(card.id);
               }
             }}
-            className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Удалить"
+            className={`p-1.5 hover:bg-red-100 rounded-md text-gray-400 hover:text-red-600 transition-all duration-200 flex-shrink-0 ${
+              isHovered ? 'opacity-100' : 'opacity-0'
+            }`}
+            title="Удалить карточку"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
         
-        {cardDescription && (
-          <p className="text-xs text-gray-600 line-clamp-3 mt-1">
-            {cardDescription}
-          </p>
-        )}
-        
-        <div className="flex justify-end mt-2 text-xs text-gray-400">
-          <span>#{card.id}</span>
+        <div className="flex-1 flex flex-col justify-start mt-3">
+          {cardDescription && (
+            <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+              {cardDescription}
+            </p>
+          )}
         </div>
+        
       </div>
 
-      {/* Модальное окно редактирования */}
-      <CardModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onUpdate={async (cardId, cardData) => {
-          await onUpdate(cardId, cardData);
-          setIsEditModalOpen(false);
-        }}
-        card={card}
-        statusId={card.status_id}
-      />
     </>
+  );
+}, (prevProps, nextProps) => {
+  // Сравниваем только важные свойства для предотвращения ненужных перерендеров
+  return (
+    prevProps.card.id === nextProps.card.id &&
+    prevProps.card.title === nextProps.card.title &&
+    prevProps.card.description === nextProps.card.description &&
+    prevProps.card.status_id === nextProps.card.status_id &&
+    prevProps.index === nextProps.index
   );
 });
 

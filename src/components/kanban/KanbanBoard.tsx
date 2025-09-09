@@ -3,6 +3,7 @@ import { StatusResponse, CardResponse, CreateCardRequest, BulkCardSortRequest } 
 import { apiService } from '../../services/api';
 import StatusColumn from './StatusColumn';
 import CreateStatusButton from './CreateStatusButton';
+import CardModal from '../modals/CardModal';
 
 interface KanbanBoardProps {
   pipelineId: number;
@@ -21,6 +22,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   const [statuses, setStatuses] = useState<StatusResponse[]>([]);
   const [cards, setCards] = useState<CardsData>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [createCardStatusId, setCreateCardStatusId] = useState<number | null>(null);
+  const [createCardPosition, setCreateCardPosition] = useState<'top' | 'bottom'>('bottom');
+  const [selectedCard, setSelectedCard] = useState<CardResponse | null>(null);
   const lastLoadRef = useRef<{ projectId: number; pipelineId: number } | null>(null);
   const loadingRef = useRef<boolean>(false); // Флаг активной загрузки
 
@@ -287,6 +292,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
     }
   }, [projectId, pipelineId, statuses]);
 
+  const handleCreateCardClick = useCallback((statusId: number, position: 'top' | 'bottom') => {
+    console.log('🃏 Create card clicked:', { statusId, position });
+    setCreateCardStatusId(statusId);
+    setCreateCardPosition(position);
+    setSelectedCard(null);
+    setIsCardModalOpen(true);
+  }, []);
+
+  const handleCardClick = useCallback((card: CardResponse) => {
+    console.log('🃏 Card clicked:', card.title);
+    setSelectedCard(card);
+    setCreateCardStatusId(null);
+    setIsCardModalOpen(true);
+  }, []);
+
   // Удаление карточки
   const handleDeleteCard = useCallback(async (statusId: number, cardId: number) => {
     try {
@@ -431,7 +451,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
 
   return (
     <div className="flex-1 bg-gray-50 ml-2">
-      <div className="flex space-x-2 h-full pb-4">
+      <div className="flex space-x-2 pb-4">
         {statuses
           .sort((a, b) => a.sort_order - b.sort_order)
           .map((status, index) => (
@@ -446,6 +466,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
               moveCardInUI={moveCardInUI}
               saveChangesToAPI={saveChangesToAPI}
               onUpdateStatus={handleUpdateStatus}
+              onCreateCardClick={handleCreateCardClick}
+              onCardClick={handleCardClick}
             />
           ))}
         
@@ -455,6 +477,24 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
           isLoading={isLoading}
         />
       </div>
+
+      {/* Модальное окно карточки */}
+      <CardModal
+        isOpen={isCardModalOpen}
+        onClose={() => setIsCardModalOpen(false)}
+        onCreateCard={async (cardData) => {
+          if (createCardStatusId) {
+            await handleCreateCard(createCardStatusId, cardData, createCardPosition);
+            setIsCardModalOpen(false);
+          }
+        }}
+        onUpdate={async (cardId, cardData) => {
+          await handleUpdateCard(cardId, cardData);
+          setIsCardModalOpen(false);
+        }}
+        card={createCardStatusId ? null : selectedCard}
+        statusId={createCardStatusId || selectedCard?.status_id}
+      />
     </div>
   );
 };

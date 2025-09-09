@@ -504,7 +504,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
           ) : selectedProject ? (
-              <div className="flex min-w-max">
+              <div className="flex min-w-max items-start">
                 {/* Левая панель со списком pipeline */}
                 <div className="flex-shrink-0">
                   <PipelineList
