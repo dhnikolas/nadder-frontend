@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useDrop } from 'react-dnd';
 import { StatusResponse, CardResponse, CreateCardRequest } from '../../types/api';
 import { Plus } from 'lucide-react';
@@ -59,22 +59,16 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
         return;
       }
       
-      // Если карточка перетаскивается в другой статус
-      if (item.fromStatusId !== status.id) {
-        console.log('🎯 Showing drop indicator for status:', status.name);
-        setActiveIndicator(indicatorId);
-      } else {
-        if (activeIndicator === indicatorId) {
-          setActiveIndicator(null);
-        }
-      }
+            // Если карточка перетаскивается в другой статус
+            if (item.fromStatusId !== status.id) {
+              setActiveIndicator(indicatorId);
+            } else {
+              if (activeIndicator === indicatorId) {
+                setActiveIndicator(null);
+              }
+            }
     },
     drop: (item: DragItem) => {
-      console.log('🎯 Status column drop event:', { 
-        statusId: status.id, 
-        item: { cardId: item.cardId, fromStatusId: item.fromStatusId } 
-      });
-      
       // Очищаем все индикаторы
       clearAllIndicators();
       
@@ -97,10 +91,8 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   const handleUpdateStatusName = useCallback(async () => {
     if (editName.trim() && editName !== status.name) {
       try {
-        console.log('🔄 Обновляем имя статуса:', { old: status.name, new: editName });
         if (onUpdateStatus) {
           await onUpdateStatus(status.id, { name: editName.trim() });
-          console.log('✅ Имя статуса обновлено в API');
         }
       } catch (error) {
         console.error('❌ Ошибка обновления имени статуса:', error);
@@ -130,11 +122,9 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
             <ColorPicker
               selectedColor={status.color}
               onColorChange={async (color) => {
-                console.log('🎨 Цвет статуса изменен:', { old: status.color, new: color });
                 if (onUpdateStatus) {
                   try {
                     await onUpdateStatus(status.id, { color });
-                    console.log('✅ Цвет статуса обновлен в API');
                   } catch (error) {
                     console.error('❌ Ошибка обновления цвета статуса:', error);
                   }
@@ -209,11 +199,9 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
         className={`mt-1 w-full transition-opacity duration-200 ${isButtonHovered && !isOver ? 'opacity-100' : 'opacity-0'}`}
         style={{ zIndex: 30, pointerEvents: 'auto', position: 'relative' }}
         onMouseEnter={() => {
-          console.log('🖱️ Mouse enter on button area');
           setIsButtonHovered(true);
         }}
         onMouseLeave={() => {
-          console.log('🖱️ Mouse leave from button area');
           setIsButtonHovered(false);
         }}
       >

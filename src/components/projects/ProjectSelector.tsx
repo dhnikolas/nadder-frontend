@@ -27,7 +27,6 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
         name: newProjectName.trim(),
       };
       const createdProject = await apiService.createProject(newProject);
-      console.log('🆕 Создан новый проект:', { id: createdProject.id, name: createdProject.name });
       
       // Уведомляем родительский компонент о создании нового проекта
       if (onProjectCreate) {
@@ -64,11 +63,9 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
     try {
       if (onProjectDelete) {
         await onProjectDelete(projectToDelete.id);
-        console.log('🗑️ Проект удален:', { id: projectToDelete.id, name: projectToDelete.name });
       } else {
         // Если onProjectDelete не передан, используем API напрямую
         await apiService.deleteProject(projectToDelete.id);
-        console.log('🗑️ Проект удален через API:', { id: projectToDelete.id, name: projectToDelete.name });
       }
       
       // Закрываем модал и сбрасываем состояние

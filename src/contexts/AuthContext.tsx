@@ -73,7 +73,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Очищаем все сохраненные данные о выбранных проектах и pipeline
     clearAllStoredData();
-    console.log('🧹 Очищены все сохраненные данные при выходе');
   };
 
   const value: AuthContextType = {

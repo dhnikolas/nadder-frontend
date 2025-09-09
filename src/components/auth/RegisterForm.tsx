@@ -19,7 +19,6 @@ const RegisterForm: React.FC = () => {
   // Перенаправляем на главную страницу после успешного входа
   useEffect(() => {
     if (user) {
-      console.log('✅ Пользователь авторизован, перенаправляем на главную страницу');
       navigate('/', { replace: true });
     }
   }, [user, navigate]);
@@ -49,7 +48,6 @@ const RegisterForm: React.FC = () => {
       // Автоматически входим в систему после успешной регистрации
       try {
         await login(email, password);
-        console.log('✅ Автоматический вход после регистрации выполнен успешно');
       } catch (loginError: any) {
         console.error('⚠️ Автоматический вход не удался:', loginError);
         setSuccess('Регистрация успешна! Теперь вы можете войти в систему.');

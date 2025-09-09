@@ -15,7 +15,6 @@ const LoginForm: React.FC = () => {
   // Перенаправляем на главную страницу после успешного входа
   useEffect(() => {
     if (user) {
-      console.log('✅ Пользователь авторизован, перенаправляем на главную страницу');
       navigate('/', { replace: true });
     }
   }, [user, navigate]);

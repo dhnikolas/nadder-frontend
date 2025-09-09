@@ -46,12 +46,7 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
       const sortOrders = sortedStatuses.map(s => s.sort_order);
       const hasDuplicates = sortOrders.length !== new Set(sortOrders).size;
       
-      console.log('📋 Загружены статусы:', 
-        sortedStatuses.map(s => ({ id: s.id, name: s.name, sort_order: s.sort_order }))
-      );
-      
       if (hasDuplicates) {
-        console.log('⚠️ Обнаружены дублирующиеся sort_order, исправляем...');
         
         // Создаем статусы с исправленными sort_order (начиная с 1)
         const statusesWithFixedOrder = sortedStatuses.map((status, index) => ({
@@ -59,19 +54,15 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
           sort_order: index + 1
         }));
         
-        console.log('🔄 Исправляем дублирующиеся sort_order на сервере');
         for (let i = 0; i < statusesWithFixedOrder.length; i++) {
           const status = statusesWithFixedOrder[i];
-          console.log(`  📝 Статус ${status.id} (${status.name}): sort_order ${sortedStatuses[i].sort_order} → ${i + 1}`);
           await apiService.updateStatus(projectId, pipeline.id, status.id, {
             sort_order: i + 1,
           });
         }
-        console.log('✅ sort_order исправлен на сервере');
         
         setStatuses(statusesWithFixedOrder);
       } else {
-        console.log('✅ sort_order корректный, дубликатов нет');
         setStatuses(sortedStatuses);
       }
     } catch (error) {
@@ -80,7 +71,6 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
   }, [projectId, pipeline]);
 
   useEffect(() => {
-    console.log('🔧 PipelineSettingsModal: useEffect - isOpen =', isOpen, 'pipeline =', pipeline?.name);
     
     if (isOpen && pipeline) {
       loadStatuses();
@@ -97,7 +87,6 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
       const maxSortOrder = statuses.length > 0 ? Math.max(...statuses.map(s => s.sort_order)) : 0;
       const newSortOrder = maxSortOrder + 1;
       
-      console.log('📝 Создаем новый статус с sort_order:', newSortOrder);
       
       const createdStatus = await apiService.createStatus(projectId, pipeline.id, {
         ...newStatus,
@@ -111,7 +100,6 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
       setNewStatus({ name: '', color: '#3B82F6' });
       setIsCreatingStatus(false);
       
-      console.log('✅ Новый статус создан с sort_order:', newSortOrder);
       
       // Уведомляем родительский компонент об обновлении статусов
       if (onStatusesUpdate) {
@@ -160,13 +148,10 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
         sort_order: index + 1,
       }));
       
-      console.log('🔄 Пересчитываем sort_order после удаления статуса');
-      console.log('📋 Новый порядок статусов:', reorderedStatuses.map(s => ({ id: s.id, name: s.name, sort_order: s.sort_order })));
       
       // Обновляем sort_order на сервере для всех оставшихся статусов
       if (reorderedStatuses.length > 0) {
         const updatePromises = reorderedStatuses.map((status, index) => {
-          console.log(`  📝 Статус ${status.id} (${status.name}): обновляем sort_order на ${index + 1}`);
           return apiService.updateStatus(projectId, pipeline.id, status.id, {
             sort_order: index + 1,
           });
@@ -174,7 +159,6 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
         
         // Ждем завершения всех обновлений
         await Promise.all(updatePromises);
-        console.log('✅ sort_order пересчитан для всех оставшихся статусов');
       }
       
       setStatuses(reorderedStatuses);
@@ -204,7 +188,6 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
       return; // Нельзя двигать дальше
     }
 
-    console.log(`🔄 Перемещаем статус ${statusId}: ${currentIndex} → ${newIndex}`);
 
     try {
       // Создаем копию массива статусов
@@ -220,13 +203,10 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
         sort_order: index + 1,
       }));
       
-      console.log('🔄 Обновляем sort_order для статусов pipeline:', pipeline.id);
-      console.log('📋 Новый порядок статусов:', updatedStatuses.map(s => ({ id: s.id, name: s.name, sort_order: s.sort_order })));
       
       // Обновляем sort_order на сервере для всех статусов последовательно
       // Используем Promise.all чтобы убедиться, что все запросы выполнены
       const updatePromises = updatedStatuses.map((status, index) => {
-        console.log(`  📝 Статус ${status.id} (${status.name}): обновляем sort_order на ${index + 1}`);
         return apiService.updateStatus(projectId, pipeline.id, status.id, {
           sort_order: index + 1,
         });
@@ -234,7 +214,6 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
       
       // Ждем завершения всех обновлений
       await Promise.all(updatePromises);
-      console.log('✅ sort_order обновлен для всех статусов');
       
       // Обновляем локальное состояние только после успешного обновления на сервере
       setStatuses(updatedStatuses);
@@ -271,7 +250,6 @@ const PipelineSettingsModal: React.FC<PipelineSettingsModalProps> = ({
           </h3>
           <button
             onClick={() => {
-              console.log('🔧 PipelineSettingsModal: кнопка закрытия нажата');
               onClose();
             }}
             className="text-gray-400 hover:text-gray-600"

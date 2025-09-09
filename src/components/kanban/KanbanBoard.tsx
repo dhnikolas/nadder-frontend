@@ -17,7 +17,6 @@ interface CardsData {
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardToOpen, onCardOpened }) => {
-  console.log('🎯 KanbanBoard component render with:', { projectId, pipelineId });
   
   const [statuses, setStatuses] = useState<StatusResponse[]>([]);
   const [cards, setCards] = useState<CardsData>({});
@@ -33,18 +32,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   const loadData = useCallback(async () => {
     // Проверяем, не загружали ли мы уже данные для этих параметров
     if (lastLoadRef.current?.projectId === projectId && lastLoadRef.current?.pipelineId === pipelineId) {
-      console.log('⏭️ Data already loaded for this project/pipeline, skipping');
       return;
     }
     
     // Проверяем, не идет ли уже загрузка
     if (loadingRef.current) {
-      console.log('⏳ Loading already in progress, skipping');
       return;
     }
     
     try {
-      console.log('🔄 loadData called for:', { projectId, pipelineId });
       loadingRef.current = true;
       setIsLoading(true);
       
@@ -65,7 +61,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
           groupedCards[status.id] = [];
         });
       } else {
-        console.log('📭 No statuses found in pipeline');
       }
       
       // Распределяем карточки по статусам и сортируем
@@ -82,17 +77,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
           groupedCards[statusIdNum].sort((a, b) => a.sort_order - b.sort_order);
         });
       } else {
-        console.log('📭 No cards found in pipeline, initializing empty statuses');
       }
       
       setCards(groupedCards);
-      console.log('📊 Optimized data loading completed:');
-      console.log('  📋 Statuses loaded:', statusesResponse?.length || 0);
-      console.log('  🃏 Total cards loaded:', pipelineCardsResponse.cards?.length || 0);
-      console.log('  📊 Cards grouped by status:', Object.keys(groupedCards).reduce((acc, statusId) => {
-        acc[statusId] = groupedCards[parseInt(statusId)].length;
-        return acc;
-      }, {} as Record<string, number>));
       
       // Сохраняем информацию о последней загрузке
       lastLoadRef.current = { projectId, pipelineId };
@@ -105,18 +92,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   }, [pipelineId, projectId]);
 
   useEffect(() => {
-    console.log('🔍 useEffect triggered for loadData, projectId:', projectId, 'pipelineId:', pipelineId);
     if (projectId && pipelineId) {
       loadData();
     } else {
-      console.log('⏭️ Skipping loadData - missing projectId or pipelineId');
     }
   }, [loadData, projectId, pipelineId]);
 
   // Автоматическое открытие карточки из поиска
   useEffect(() => {
     if (cardToOpen && !isLoading && Object.keys(cards).length > 0) {
-      console.log('🔍 Автоматически открываем карточку:', cardToOpen);
       
       // Находим карточку во всех статусах
       let targetCard: CardResponse | null = null;
@@ -133,7 +117,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         const cardElement = document.querySelector(`[data-card-id="${cardToOpen}"]`);
         if (cardElement) {
           (cardElement as HTMLElement).click();
-          console.log('✅ Карточка автоматически открыта:', targetCard.title);
         }
         
         // Уведомляем Dashboard, что карточка открыта
@@ -141,16 +124,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
           onCardOpened();
         }
       } else {
-        console.log('⚠️ Карточка не найдена для автоматического открытия:', cardToOpen);
       }
     }
   }, [cardToOpen, isLoading, cards, onCardOpened]);
 
   // Логирование mount/unmount компонента
   useEffect(() => {
-    console.log('🚀 KanbanBoard mounted for:', { projectId, pipelineId });
     return () => {
-      console.log('💥 KanbanBoard unmounted for:', { projectId, pipelineId });
       // Сбрасываем флаги при размонтировании
       loadingRef.current = false;
       lastLoadRef.current = null;
@@ -198,11 +178,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
               }));
               
               const bulkRequest: BulkCardSortRequest = { cards: cardsToUpdate };
-              console.log(`🔄 Updating sort order after creating card at ${position}:`, bulkRequest);
               
               apiService.bulkUpdateCardSort(projectId, bulkRequest)
                 .then(() => {
-                  console.log(`✅ Sort order updated on server for ${position} creation`);
                 })
                 .catch((error) => {
                   console.error('❌ Error updating sort order:', error);
@@ -215,7 +193,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         }
       }, 100);
       
-      console.log(`✅ Card created at ${position}:`, newCard);
     } catch (error) {
       console.error('❌ Error creating card:', error);
       throw error;
@@ -238,7 +215,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         return newCards;
       });
       
-      console.log('✅ Card updated:', updatedCard);
     } catch (error) {
       console.error('❌ Error updating card:', error);
       throw error;
@@ -258,7 +234,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         )
       );
       
-      console.log('✅ Status updated:', updatedStatus);
     } catch (error) {
       console.error('❌ Error updating status:', error);
       throw error;
@@ -285,7 +260,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         [newStatus.id]: []
       }));
       
-      console.log('✅ Status created:', newStatus);
     } catch (error) {
       console.error('❌ Error creating status:', error);
       throw error;
@@ -293,7 +267,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   }, [projectId, pipelineId, statuses]);
 
   const handleCreateCardClick = useCallback((statusId: number, position: 'top' | 'bottom') => {
-    console.log('🃏 Create card clicked:', { statusId, position });
     setCreateCardStatusId(statusId);
     setCreateCardPosition(position);
     setSelectedCard(null);
@@ -301,7 +274,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   }, []);
 
   const handleCardClick = useCallback((card: CardResponse) => {
-    console.log('🃏 Card clicked:', card.title);
     setSelectedCard(card);
     setCreateCardStatusId(null);
     setIsCardModalOpen(true);
@@ -317,7 +289,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         [statusId]: prev[statusId].filter(card => card.id !== cardId)
       }));
       
-      console.log('✅ Card deleted:', cardId);
     } catch (error) {
       console.error('❌ Error deleting card:', error);
       throw error;
@@ -326,11 +297,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
 
   // Перемещение карточки с немедленным API вызовом
   const moveCardInUI = useCallback(async (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => {
-    console.log('🔄 moveCardInUI called with:', { cardId, fromStatusId, toStatusId, toIndex });
     
     // Сначала обновляем UI
     setCards(prev => {
-      console.log('🔄 Current cards state:', prev);
       
       const newCards = { ...prev };
       
@@ -344,13 +313,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
       }
       
       const [movedCard] = sourceCards.splice(cardIndex, 1);
-      console.log('🔄 Moved card:', movedCard);
       
       // Если перемещаем в тот же статус
       if (fromStatusId === toStatusId) {
         sourceCards.splice(toIndex, 0, movedCard);
         newCards[fromStatusId] = sourceCards;
-        console.log('🔄 Same status move, new order:', sourceCards.map(c => ({ id: c.id, sort_order: c.sort_order })));
       } else {
         // Перемещаем в другой статус
         const targetCards = [...(newCards[toStatusId] || [])];
@@ -359,24 +326,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         newCards[fromStatusId] = sourceCards;
         newCards[toStatusId] = targetCards;
         
-        console.log('🔄 Cross-status move:');
-        console.log('  - Source status:', fromStatusId, 'cards:', sourceCards.map(c => ({ id: c.id, sort_order: c.sort_order })));
-        console.log('  - Target status:', toStatusId, 'cards:', targetCards.map(c => ({ id: c.id, sort_order: c.sort_order })));
       }
       
-      console.log('🔄 New cards state:', newCards);
       return newCards;
     });
 
     // Если перемещение между разными статусами - сразу вызываем moveCard API
     if (fromStatusId !== toStatusId) {
       try {
-        console.log('🚀 Calling moveCard API immediately for cross-status move');
         await apiService.moveCard(projectId, cardId, {
           status_id: toStatusId,
           sort_order: toIndex,
         });
-        console.log('✅ moveCard API call successful');
       } catch (error) {
         console.error('❌ Error calling moveCard API:', error);
         // В случае ошибки перезагружаем данные
@@ -388,8 +349,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   // Сохранение сортировки в API (только для финального drop)
   const saveChangesToAPI = useCallback(async (cardId: number, fromStatusId: number, toStatusId: number) => {
     try {
-      console.log('💾 saveChangesToAPI called with:', { cardId, fromStatusId, toStatusId });
-      console.log('💾 Current cards state:', cards);
       
       // Собираем все карточки для обновления сортировки из всех затронутых статусов
       const statusesToUpdate = fromStatusId === toStatusId ? [fromStatusId] : [fromStatusId, toStatusId];
@@ -403,7 +362,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
             sort_order: index
           }));
           allCardsToUpdate.push(...statusCardsToUpdate);
-          console.log(`📝 Added ${statusCardsToUpdate.length} cards from status ${statusId} to bulk update`);
         }
       }
       
@@ -413,11 +371,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
           cards: allCardsToUpdate
         };
         
-        console.log(`🚀 Sending single bulk-sort request for ${allCardsToUpdate.length} cards:`, bulkRequest);
         await apiService.bulkUpdateCardSort(projectId, bulkRequest);
-        console.log(`✅ Bulk sort order updated for ${statusesToUpdate.length} status(es) in one request`);
       } else {
-        console.log('📭 No cards to update sort order for');
       }
       
     } catch (error) {

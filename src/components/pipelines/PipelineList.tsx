@@ -87,7 +87,6 @@ const DraggablePipeline: React.FC<DraggablePipelineProps> = ({
       }
 
       // Time to actually perform the action
-      console.log('🎯 Вызываем onMove:', { dragIndex, hoverIndex });
       onMove(dragIndex, hoverIndex);
 
       // Note: we're mutating the monitor item here!
@@ -101,11 +100,9 @@ const DraggablePipeline: React.FC<DraggablePipelineProps> = ({
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPE,
     item: () => {
-      console.log('🎯 Начинаем перетаскивание пайплайна:', { id: pipeline.id, name: pipeline.name, index });
       return { id: pipeline.id, index };
     },
     end: (item, monitor) => {
-      console.log('🏁 Завершение перетаскивания пайплайна:', { id: pipeline.id, name: pipeline.name });
       onDropComplete();
     },
     collect: (monitor) => ({
@@ -193,11 +190,9 @@ const PipelineList: React.FC<PipelineListProps> = ({
       });
       
       // Обновляем список pipelines
-      console.log('🔄 Обновляем список pipelines после создания');
       await onPipelineUpdate();
       
       // Автоматически выбираем новый pipeline
-      console.log('🆕 Автоматически выбираем новый pipeline:', { id: newPipeline.id, name: newPipeline.name });
       onPipelineSelect(newPipeline);
       setIsCreateModalOpen(false);
     } catch (error) {
@@ -214,17 +209,14 @@ const PipelineList: React.FC<PipelineListProps> = ({
       await apiService.deletePipeline(projectId, id);
       
       // Обновляем список pipelines
-      console.log('🔄 Обновляем список pipelines после удаления');
       await onPipelineUpdate();
       
       // Если удаляемый pipeline был выбран, выбираем другой
       if (selectedPipeline?.id === id) {
         const remainingPipelines = localPipelines.filter(p => p.id !== id);
         if (remainingPipelines.length > 0) {
-          console.log('🗑️ Выбираем новый pipeline после удаления:', { id: remainingPipelines[0].id, name: remainingPipelines[0].name });
           onPipelineSelect(remainingPipelines[0]);
         } else {
-          console.log('🗑️ Нет доступных pipeline после удаления');
           onPipelineSelect(null as any);
         }
       }
@@ -238,20 +230,17 @@ const PipelineList: React.FC<PipelineListProps> = ({
   };
 
   const handleMovePipeline = (dragIndex: number, hoverIndex: number) => {
-    console.log('🔄 handleMovePipeline вызвана (только визуально):', { dragIndex, hoverIndex });
     
     // Только визуальное перемещение - обновляем локальное состояние
     const newPipelines = [...localPipelines];
     const draggedPipeline = newPipelines[dragIndex];
     
-    console.log('🎯 Перетаскиваемый пайплайн:', { id: draggedPipeline.id, name: draggedPipeline.name });
     
     // Удаляем элемент из старой позиции
     newPipelines.splice(dragIndex, 1);
     // Вставляем элемент в новую позицию
     newPipelines.splice(hoverIndex, 0, draggedPipeline);
     
-    console.log('📋 Новый порядок пайплайнов (визуально):', newPipelines.map((p, i) => ({ id: p.id, name: p.name, new_sort_order: i })));
     
     // Мгновенно обновляем локальное состояние для визуального отображения
     setLocalPipelines(newPipelines);
@@ -261,17 +250,14 @@ const PipelineList: React.FC<PipelineListProps> = ({
   };
 
   const handleDropComplete = async () => {
-    console.log('🏁 handleDropComplete вызвана - сохраняем изменения');
     
     if (!pendingOrder || isUpdatingOrder) {
-      console.log('⚠️ Нет изменений для сохранения или обновление уже в процессе');
       setPendingOrder(null);
       return;
     }
     
     setIsUpdatingOrder(true);
     try {
-      console.log('💾 Сохраняем новый порядок на сервере...');
       
       // Подготавливаем данные для массового обновления
       const pipelinesToUpdate = pendingOrder.map((pipeline, index) => ({
@@ -279,17 +265,14 @@ const PipelineList: React.FC<PipelineListProps> = ({
         sort_order: index + 1 // Начинаем с 1, а не с 0
       }));
       
-      console.log('📋 Данные для массового обновления:', pipelinesToUpdate);
       
       // Используем новый API для массового обновления
       await apiService.bulkUpdatePipelineSort(projectId, pipelinesToUpdate);
       
-      console.log('✅ Массовое обновление завершено успешно');
       
       // Обновляем список пайплайнов с сервера для синхронизации
       await onPipelineUpdate();
       
-      console.log('✅ Порядок пайплайнов сохранен успешно');
     } catch (error) {
       console.error('❌ Ошибка сохранения порядка пайплайнов:', error);
       // В случае ошибки восстанавливаем исходное состояние
@@ -322,12 +305,10 @@ const PipelineList: React.FC<PipelineListProps> = ({
             index={index}
             isSelected={selectedPipeline?.id === pipeline.id}
             onSelect={(pipeline) => {
-              console.log('🖱️ Клик по pipeline:', { id: pipeline.id, name: pipeline.name });
               onPipelineSelect(pipeline);
             }}
             onDelete={handleDeletePipeline}
             onSettingsOpen={() => {
-              console.log('🔧 PipelineList: Открываем настройки pipeline');
               onSettingsOpen(true);
               openSettings();
             }}
@@ -349,12 +330,10 @@ const PipelineList: React.FC<PipelineListProps> = ({
       <PipelineSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => {
-          console.log('🔧 PipelineList: Закрываем настройки pipeline');
           setIsSettingsModalOpen(false);
           onSettingsOpen(false);
           // Принудительно сбрасываем состояние через небольшую задержку
           setTimeout(() => {
-            console.log('🔧 PipelineList: Принудительно сбрасываем состояние');
             onSettingsOpen(false);
           }, 100);
         }}

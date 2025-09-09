@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, CloudOff, Download, CheckCircle, AlertCircle, Clock, Edit3, Save, XCircle } from 'lucide-react';
+import { Cloud, CloudOff, Download, CheckCircle, AlertCircle, Clock, Edit3, Save, XCircle, X } from 'lucide-react';
 import { BackupStatusResponse, BackupSettingsRequest } from '../../types/api';
 import apiService from '../../services/api';
 
@@ -17,6 +17,7 @@ const BackupManager: React.FC<BackupManagerProps> = ({ isOpen, onClose }) => {
   const [isEditingInterval, setIsEditingInterval] = useState(false);
   const [intervalMinutes, setIntervalMinutes] = useState(30);
 
+
   // Загружаем статус бекапа при открытии
   useEffect(() => {
     if (isOpen) {
@@ -30,6 +31,7 @@ const BackupManager: React.FC<BackupManagerProps> = ({ isOpen, onClose }) => {
       const status = await apiService.getBackupStatus();
       setBackupStatus(status);
       setError('');
+      setSuccess(''); // Очищаем сообщение об успехе
       
       // Устанавливаем интервал из статуса
       if (status.is_configured && status.interval_minutes) {
@@ -49,10 +51,10 @@ const BackupManager: React.FC<BackupManagerProps> = ({ isOpen, onClose }) => {
     try {
       setIsConnecting(true);
       setError('');
+      setSuccess(''); // Очищаем предыдущие сообщения об успехе
       
       // Получаем URL для авторизации
       const authData = await apiService.getYandexAuthUrl();
-      console.log('🔗 Получен URL для авторизации:', authData);
       
       // Проверяем, что URL получен корректно
       const authUrl = authData.auth_url;
@@ -72,53 +74,42 @@ const BackupManager: React.FC<BackupManagerProps> = ({ isOpen, onClose }) => {
         throw new Error('Не удалось открыть окно авторизации. Возможно, заблокированы всплывающие окна.');
       }
 
-      // Отслеживаем изменения в окне авторизации
-      const checkWindow = setInterval(() => {
+      // Проверяем статус интеграции каждые 2 секунды
+      const checkStatus = setInterval(async () => {
         try {
-          // Проверяем, закрыто ли окно
-          if (authWindow?.closed) {
-            clearInterval(checkWindow);
+          const status = await apiService.getBackupStatus();
+          
+          if (status.is_configured) {
+            clearInterval(checkStatus);
+            
+            if (!authWindow.closed) {
+              authWindow.close();
+            }
             setIsConnecting(false);
-            // Перезагружаем статус после авторизации
+            
+            // Перезагружаем статус (модальное окно остается открытым)
             setTimeout(() => {
               loadBackupStatus();
             }, 1000);
-            return;
           }
-
-          // Проверяем URL окна (если доступен)
-          if (authWindow.location && authWindow.location.href) {
-            const currentUrl = authWindow.location.href;
-            
-            // Если URL содержит успешный результат или ошибку
-            if (currentUrl.includes('yandex_auth=success') || 
-                currentUrl.includes('yandex_auth=error') ||
-                currentUrl.includes('success=true') ||
-                currentUrl.includes('error=')) {
-              
-              clearInterval(checkWindow);
-              authWindow.close();
-              setIsConnecting(false);
-              
-              // Перезагружаем статус
-              setTimeout(() => {
-                loadBackupStatus();
-              }, 1000);
-            }
-          }
-        } catch (e) {
-          // Игнорируем ошибки CORS при доступе к location
+        } catch (error) {
+          // Игнорируем ошибки при проверке статуса
         }
-      }, 500);
+      }, 2000); // Проверяем каждые 2 секунды
 
       // Таймаут на случай, если что-то пойдет не так
       setTimeout(() => {
-        clearInterval(checkWindow);
+        clearInterval(checkStatus);
         if (!authWindow.closed) {
           authWindow.close();
         }
         setIsConnecting(false);
-      }, 300000); // 5 минут
+        
+        // Перезагружаем статус (модальное окно остается открытым)
+        setTimeout(() => {
+          loadBackupStatus();
+        }, 1000);
+      }, 60000); // 60 секунд таймаут
 
     } catch (error: any) {
       console.error('Ошибка подключения к Yandex:', error);
@@ -262,7 +253,7 @@ const BackupManager: React.FC<BackupManagerProps> = ({ isOpen, onClose }) => {
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            <CloudOff className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 

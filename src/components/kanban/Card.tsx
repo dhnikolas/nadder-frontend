@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState, useEffect } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { CardResponse } from '../../types/api';
 import { Trash2 } from 'lucide-react';
@@ -53,21 +53,16 @@ const Card: React.FC<CardProps> = React.memo(({
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-    end: (item, monitor) => {
-      console.log('🃏 Drag ended for card:', card.title);
-      
-      // Очищаем все индикаторы при завершении drag
-      clearAllIndicators();
-      
-      // Проверяем, была ли карточка успешно перемещена
-      const dropResult = monitor.getDropResult();
-      if (dropResult) {
-        console.log('✅ Card dropped successfully:', dropResult);
-        // API вызов будет сделан в drop callback
-      } else {
-        console.log('❌ Card drop cancelled');
-      }
-    },
+          end: (item, monitor) => {
+            // Очищаем все индикаторы при завершении drag
+            clearAllIndicators();
+            
+            // Проверяем, была ли карточка успешно перемещена
+            const dropResult = monitor.getDropResult();
+            if (dropResult) {
+              // API вызов будет сделан в drop callback
+            }
+          },
   });
 
 
@@ -94,9 +89,8 @@ const Card: React.FC<CardProps> = React.memo(({
         return;
       }
 
-      // Определяем позицию курсора относительно элемента
-      const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const hoverHeight = hoverBoundingRect.bottom - hoverBoundingRect.top;
+            // Определяем позицию курсора относительно элемента
+            const hoverBoundingRect = ref.current.getBoundingClientRect();
       
       const clientOffset = monitor.getClientOffset();
       
@@ -111,45 +105,30 @@ const Card: React.FC<CardProps> = React.memo(({
       const topThreshold = hoverBoundingRect.top + threshold;
       const bottomThreshold = hoverBoundingRect.bottom - threshold;
 
-      // Логика показа индикаторов при пересечении 10px зоны в любом направлении
-      if (dragIndex < hoverIndex && hoverClientY < topThreshold) {
-        // Перетаскиваем вниз, курсор в верхних 10px - показываем индикатор сверху
-        console.log('⬇️ Перетаскивание вниз - показываем top индикатор');
-        setActiveIndicator(`${indicatorId}-top`);
-      } else if (dragIndex > hoverIndex && hoverClientY > bottomThreshold) {
-        // Перетаскиваем вверх, курсор в нижних 10px - показываем индикатор снизу
-        console.log('⬆️ Перетаскивание вверх - показываем bottom индикатор');
-        setActiveIndicator(`${indicatorId}-bottom`);
-      } else {
-        // Скрываем индикатор если курсор не в зоне срабатывания
-        if (activeIndicator?.startsWith(indicatorId)) {
-          setActiveIndicator(null);
-        }
-      }
+            // Логика показа индикаторов при пересечении 10px зоны в любом направлении
+            if (dragIndex < hoverIndex && hoverClientY < topThreshold) {
+              // Перетаскиваем вниз, курсор в верхних 10px - показываем индикатор сверху
+              setActiveIndicator(`${indicatorId}-top`);
+            } else if (dragIndex > hoverIndex && hoverClientY > bottomThreshold) {
+              // Перетаскиваем вверх, курсор в нижних 10px - показываем индикатор снизу
+              setActiveIndicator(`${indicatorId}-bottom`);
+            } else {
+              // Скрываем индикатор если курсор не в зоне срабатывания
+              if (activeIndicator?.startsWith(indicatorId)) {
+                setActiveIndicator(null);
+              }
+            }
     },
     drop: (item: DragItem) => {
-      console.log('🎯 Card drop event:', { 
-        targetCard: { id: card.id, title: card.title, statusId: card.status_id },
-        draggedItem: { cardId: item.cardId, fromStatusId: item.fromStatusId } 
-      });
-      
       // Определяем позицию вставки на основе последнего показанного индикатора
       let newIndex = index;
-      console.log('🎯 Drop логика:', { 
-        activeIndicator, 
-        currentIndex: index, 
-        dragIndex: item.fromIndex,
-        hoverIndex: index 
-      });
       
       if (activeIndicator?.includes('bottom')) {
         // При перетаскивании вверх (bottom индикатор) - вставляем после текущей карточки
         newIndex = index + 1;
-        console.log('⬆️ Перетаскивание вверх - вставляем после карточки:', newIndex);
       } else if (activeIndicator?.includes('top')) {
         // При перетаскивании вниз (top индикатор) - вставляем перед текущей карточкой
         newIndex = index;
-        console.log('⬇️ Перетаскивание вниз - вставляем перед карточкой:', newIndex);
       }
       
       // Выполняем перемещение только при drop
@@ -176,12 +155,11 @@ const Card: React.FC<CardProps> = React.memo(({
     }
   }, [drag, drop]);
 
-  const handleCardClick = () => {
-    if (!isDragging) {
-      console.log('🃏 Card clicked - opening modal:', card.title);
-      onCardClick(card);
-    }
-  };
+    const handleCardClick = () => {
+      if (!isDragging) {
+        onCardClick(card);
+      }
+    };
 
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);

@@ -28,7 +28,6 @@ const Dashboard: React.FC = () => {
 
   // Логируем изменения состояния настроек pipeline
   useEffect(() => {
-    console.log('🔧 Dashboard: Состояние настроек pipeline изменилось:', isPipelineSettingsOpen, 'тип:', typeof isPipelineSettingsOpen);
   }, [isPipelineSettingsOpen]);
 
   // Закрытие выпадающего меню при клике вне его
@@ -49,7 +48,6 @@ const Dashboard: React.FC = () => {
   }, [isUserMenuOpen]);
 
   const handleProjectSelect = (project: ProjectResponse) => {
-    console.log('🔄 Выбираем проект:', project.name);
     
     // Проверяем, изменился ли проект
     const isProjectChanged = selectedProject?.id !== project.id;
@@ -61,7 +59,6 @@ const Dashboard: React.FC = () => {
     if (isProjectChanged) {
       setSelectedPipeline(null);
       // Не очищаем сохраненный pipeline, так как теперь сохраняем для каждого проекта отдельно
-      console.log('🔄 Проект изменился, пайплайн будет восстановлен из сохраненных данных');
     }
     
     // Сбрасываем ключ принудительной перезагрузки
@@ -69,28 +66,20 @@ const Dashboard: React.FC = () => {
     
     // Сохраняем выбранный проект
     saveSelectedProject(project);
-    console.log('💾 Сохранен выбранный проект:', project.name);
   };
 
   const handleProjectDelete = async (projectId: number) => {
     try {
       await apiService.deleteProject(projectId);
-      console.log('🗑️ Проект удален:', projectId);
-      
       // Обновляем список проектов, удаляем удаленный проект
       setProjects(prev => {
         const updatedProjects = prev.filter(project => project.id !== projectId);
-        console.log('📋 Список проектов обновлен после удаления:', {
-          удаленПроект: projectId,
-          осталосьПроектов: updatedProjects.length
-        });
         
         // Если удаляемый проект был выбран, выбираем другой или сбрасываем
         if (selectedProject?.id === projectId) {
           if (updatedProjects.length > 0) {
             // Выбираем первый доступный проект
             const newSelectedProject = updatedProjects[0];
-            console.log('🔄 Выбираем новый проект после удаления:', newSelectedProject.name);
             setSelectedProject(newSelectedProject);
             saveSelectedProject(newSelectedProject);
             
@@ -99,7 +88,6 @@ const Dashboard: React.FC = () => {
             clearSelectedPipeline();
           } else {
             // Если проектов не осталось, сбрасываем все
-            console.log('📭 Проектов не осталось, сбрасываем выбор');
             setSelectedProject(null);
             setSelectedPipeline(null);
             clearSelectedPipeline();
@@ -116,7 +104,6 @@ const Dashboard: React.FC = () => {
   };
 
   const handleCardSearchSelect = async (card: CardSearchResult) => {
-    console.log('🔍 Выбрана карточка из поиска:', card);
     
     // Находим проект по ID
     const targetProject = projects.find(p => p.id === card.project_id);
@@ -127,7 +114,6 @@ const Dashboard: React.FC = () => {
     
     // Переключаемся на нужный проект
     if (selectedProject?.id !== targetProject.id) {
-      console.log('🔄 Переключаемся на проект:', targetProject.name);
       setSelectedProject(targetProject);
       saveSelectedProject(targetProject);
     }
@@ -140,7 +126,6 @@ const Dashboard: React.FC = () => {
       // Находим нужный пайплайн
       const targetPipeline = sortedPipelines.find(p => p.id === card.pipeline_id);
       if (targetPipeline) {
-        console.log('🔄 Переключаемся на пайплайн:', targetPipeline.name);
         setSelectedPipeline(targetPipeline);
         saveProjectPipeline(targetProject.id, targetPipeline);
       }
@@ -157,10 +142,6 @@ const Dashboard: React.FC = () => {
   };
 
   const handlePipelineSelect = (pipeline: PipelineResponse | null) => {
-    console.log('🔄 handlePipelineSelect вызван с:', {
-      pipeline: pipeline ? { id: pipeline.id, name: pipeline.name, project_id: pipeline.project_id } : null,
-      selectedProject: selectedProject ? { id: selectedProject.id, name: selectedProject.name } : null
-    });
     
     setSelectedPipeline(pipeline);
     
@@ -174,17 +155,11 @@ const Dashboard: React.FC = () => {
         name: pipeline.name,
         projectId: pipeline.project_id,
       };
-      console.log('💾 Сохраняем pipeline данные:', pipelineData);
       saveSelectedPipeline(pipelineData);
       
       // Сохраняем пайплайн для конкретного проекта
       saveProjectPipeline(selectedProject.id, { id: pipeline.id, name: pipeline.name });
-      console.log('✅ Pipeline сохранен успешно');
     } else {
-      console.log('⚠️ Pipeline не сохранен:', {
-        hasPipeline: !!pipeline,
-        hasSelectedProject: !!selectedProject
-      });
     }
   };
 
@@ -192,7 +167,6 @@ const Dashboard: React.FC = () => {
     if (!selectedProject) return;
     
     try {
-      console.log('🔄 Обновляем список pipelines для проекта:', selectedProject.name);
       const data = await apiService.getPipelines(selectedProject.id);
       
       // Проверяем, что API вернул массив
@@ -205,7 +179,6 @@ const Dashboard: React.FC = () => {
       // Сортируем по sort_order
       const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
       setPipelines(sortedPipelines);
-      console.log('✅ Список pipelines обновлен:', sortedPipelines.length, 'элементов');
       
     } catch (error) {
       console.error('❌ Ошибка обновления pipelines:', error);
@@ -213,11 +186,9 @@ const Dashboard: React.FC = () => {
   };
 
   const handleLogout = () => {
-    console.log('🚪 Выход из системы, очищаем сохраненные данные...');
     
     // Очищаем все сохраненные данные
     clearAllStoredData();
-    console.log('🧹 Все сохраненные данные очищены');
     
     // Выходим из системы
     logout();
@@ -226,7 +197,6 @@ const Dashboard: React.FC = () => {
   // Автоматически сохраняем выбранный pipeline при его изменении
   // useEffect(() => {
   //   if (selectedPipeline && selectedProject) {
-  //     console.log('💾 Автоматически сохраняем выбранный pipeline:', selectedPipeline.name);
   //     const pipelineData = {
   //       id: selectedPipeline.id,
   //       name: selectedPipeline.name,
@@ -240,29 +210,20 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadStoredData = async () => {
       try {
-        console.log('🔄 Загружаем сохраненные данные при инициализации...');
         
         // Загружаем сохраненный проект
         const storedProject = getSelectedProject();
         if (storedProject) {
-          console.log('📁 Загружаем сохраненный проект:', storedProject.name);
           
           // Проверяем, что pipeline принадлежит этому проекту
           const storedPipeline = getSelectedPipeline();
-          console.log('📋 Найден сохраненный pipeline:', storedPipeline);
           
           if (storedPipeline && validateStoredData(storedProject.id)) {
-            console.log('✅ Pipeline валиден для проекта:', storedPipeline.name);
             // Сохраняем информацию о том, что нужно восстановить pipeline
             // Pipeline будет загружен автоматически в PipelineList
           } else if (storedPipeline) {
-            console.log('⚠️ Pipeline не валиден для проекта:', {
-              pipelineProjectId: storedPipeline.projectId,
-              currentProjectId: storedProject.id
-            });
           }
         } else {
-          console.log('ℹ️ Сохраненный проект не найден');
         }
       } catch (error) {
         console.error('❌ Ошибка загрузки сохраненных данных:', error);
@@ -282,13 +243,11 @@ const Dashboard: React.FC = () => {
     const loadProjects = async () => {
       // Защита от повторных запросов
       if (isProjectsLoading) {
-        console.log('🔄 Проекты уже загружаются, пропускаем...');
         return;
       }
 
       try {
         setIsProjectsLoading(true);
-        console.log('📋 Загружаем проекты...');
         const data = await apiService.getProjects();
         
         // Проверяем, что API вернул массив
@@ -302,30 +261,25 @@ const Dashboard: React.FC = () => {
         // Проекты не имеют sort_order, сортируем по имени
         const sortedProjects = data.sort((a, b) => a.name.localeCompare(b.name));
         setProjects(sortedProjects);
-        console.log('✅ Проекты загружены:', sortedProjects.length);
         
         // Пытаемся восстановить сохраненный проект
         const storedProject = getSelectedProject();
         if (storedProject) {
           const projectToRestore = sortedProjects.find(p => p.id === storedProject.id);
           if (projectToRestore) {
-            console.log('🔄 Восстанавливаем сохраненный проект:', projectToRestore.name);
             setSelectedProject(projectToRestore);
           } else {
-            console.log('⚠️ Сохраненный проект не найден в списке, выбираем первый');
             if (sortedProjects.length > 0) {
               setSelectedProject(sortedProjects[0]);
             }
           }
         } else if (sortedProjects.length > 0) {
           // Если нет сохраненного проекта, выбираем первый
-          console.log('🔄 Нет сохраненного проекта, выбираем первый:', sortedProjects[0].name);
           setSelectedProject(sortedProjects[0]);
         }
         
         // Сбрасываем состояние восстановления данных
         setIsRestoringData(false);
-        console.log('✅ Восстановление данных завершено');
       } catch (error) {
         console.error('❌ Ошибка загрузки проектов:', error);
         // Сбрасываем состояние восстановления данных даже при ошибке
@@ -352,13 +306,11 @@ const Dashboard: React.FC = () => {
 
       // Защита от повторных запросов
       if (isPipelinesLoading) {
-        console.log('🔄 Pipelines уже загружаются, пропускаем...');
         return;
       }
 
       try {
         setIsPipelinesLoading(true);
-        console.log('📋 Загружаем pipelines для проекта:', selectedProject.name);
         const data = await apiService.getPipelines(selectedProject.id);
         
         // Проверяем, что API вернул массив
@@ -372,23 +324,19 @@ const Dashboard: React.FC = () => {
         // Сортируем по sort_order
         const sortedPipelines = data.sort((a, b) => a.sort_order - b.sort_order);
         setPipelines(sortedPipelines);
-        console.log('✅ Pipelines загружены:', sortedPipelines.length);
         
         // Пытаемся восстановить сохраненный pipeline для этого проекта
         const storedProjectPipeline = getProjectPipeline(selectedProject.id);
         if (storedProjectPipeline) {
           const foundPipeline = sortedPipelines.find(p => p.id === storedProjectPipeline.id);
           if (foundPipeline) {
-            console.log('📋 Восстанавливаем сохраненный pipeline для проекта:', foundPipeline.name);
             setSelectedPipeline(foundPipeline);
           } else {
             // Если сохраненный pipeline не найден, выбираем первый
-            console.log('⚠️ Сохраненный pipeline для проекта не найден в списке, выбираем первый:', sortedPipelines[0].name);
             setSelectedPipeline(sortedPipelines[0]);
           }
         } else if (sortedPipelines.length > 0) {
           // Выбираем первый pipeline если нет сохраненного для этого проекта
-          console.log('🔄 Выбираем первый доступный pipeline:', sortedPipelines[0].name);
           setSelectedPipeline(sortedPipelines[0]);
         }
       } catch (error) {
@@ -429,7 +377,6 @@ const Dashboard: React.FC = () => {
                   onProjectSelect={handleProjectSelect}
                   onProjectDelete={handleProjectDelete}
                   onProjectCreate={(project) => {
-                    console.log('🆕 Новый проект создан, добавляем в список:', project.name);
                     setProjects(prev => [...prev, project].sort((a, b) => a.name.localeCompare(b.name)));
                   }}
                 />
@@ -516,7 +463,6 @@ const Dashboard: React.FC = () => {
                     onSettingsOpen={setIsPipelineSettingsOpen}
                     onPipelineUpdate={handlePipelineUpdate}
                     onStatusesUpdate={() => {
-                      console.log('🔄 Статусы обновлены в настройках, перезагружаем данные Kanban');
                       // Принудительно перезагружаем данные Kanban доски
                       if (selectedPipeline) {
                         // Принудительно перезагружаем данные, изменяя key

@@ -207,7 +207,6 @@ class ApiService {
   // Yandex API методы
   async getYandexAuthUrl(): Promise<YandexAuthUrlResponse> {
     const response: AxiosResponse<YandexAuthUrlResponse> = await this.api.get('/yandex/auth-url');
-    console.log('🔗 API ответ для auth-url:', response.data);
     return response.data;
   }
 
