@@ -34,6 +34,8 @@ const CardModal: React.FC<CardModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [selectedStatusId, setSelectedStatusId] = useState<number | null>(null);
+  const [isMouseDownInside, setIsMouseDownInside] = useState(false);
+  const [initialContent, setInitialContent] = useState(getInitialContent);
 
   // Функция для разделения контента на название и описание
   const parseContent = (text: string) => {
@@ -43,13 +45,22 @@ const CardModal: React.FC<CardModalProps> = ({
     return { title, description };
   };
 
+  // Функция для проверки изменений
+  const hasChanges = () => {
+    return content.trim() !== initialContent.trim();
+  };
+
   // Обновляем контент при изменении карточки
   useLayoutEffect(() => {
-    if (card) {
-      const combinedContent = card.title + (card.description ? '\n' + card.description : '');
-      setContent(combinedContent);
-    } else if (isOpen) {
-      setContent('');
+    if (isOpen) {
+      if (card) {
+        const combinedContent = card.title + (card.description ? '\n' + card.description : '');
+        setContent(combinedContent);
+        setInitialContent(combinedContent);
+      } else {
+        setContent('');
+        setInitialContent('');
+      }
     }
   }, [card, isOpen]);
 
@@ -86,88 +97,124 @@ const CardModal: React.FC<CardModalProps> = ({
     setSelectedStatusId(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Обработчики для отслеживания кликов
+  const handleBackdropMouseDown = (e: React.MouseEvent) => {
+    // Проверяем, что клик был именно по backdrop, а не по модальному окну
+    if (e.target === e.currentTarget) {
+      setIsMouseDownInside(false);
+    }
+  };
+
+  const handleBackdropClick = async (e: React.MouseEvent) => {
+    // Закрываем только если клик начался и закончился вне модального окна
+    if (e.target === e.currentTarget && !isMouseDownInside) {
+      await handleSaveAndClose();
+    }
+  };
+
+  const handleModalMouseDown = () => {
+    setIsMouseDownInside(true);
+  };
+
+  // Функция 1: Закрывает и сохраняет карточку если есть изменения
+  const handleSaveAndClose = async () => {
+    if (isLoading) return;
+
+    // Проверяем, есть ли изменения
+    if (!hasChanges()) {
+      onClose();
+      return;
+    }
+
     const { title, description } = parseContent(content);
-    if (!title.trim()) return;
 
     setIsLoading(true);
     try {
       if (isEditMode && card && onUpdate) {
-        // Режим редактирования
+        // Режим редактирования - сохраняем даже пустую карточку
         await onUpdate(card.id, {
-          title: title.trim(),
+          title: title.trim() || 'Без названия',
           description: description.trim() || undefined,
         });
       } else if (!isEditMode && onCreateCard && statusId) {
-        // Режим создания
+        // Режим создания - сохраняем даже пустую карточку
         await onCreateCard({
-          title: title.trim(),
+          title: title.trim() || 'Без названия',
           description: description.trim() || undefined,
         });
       }
-      handleClose();
+      onClose();
     } catch (error) {
-      console.error('Ошибка обработки карточки:', error);
+      console.error('Ошибка сохранения карточки:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleClose = () => {
-    if (!isLoading) {
-      if (isEditMode && card) {
-        // Объединяем название и описание в один контент
-        const combinedContent = card.title + (card.description ? '\n' + card.description : '');
-        setContent(combinedContent);
-      } else {
-        setContent('');
-      }
-      onClose();
-    }
+  // Функция 2: Закрывает и не сохраняет карточку
+  const handleCloseWithoutSave = () => {
+    onClose();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSaveAndClose();
   };
 
 
   if (!isOpen) return null;
 
-  // Проверяем, что контент готов (для режима редактирования)
-  if (card && !content) return null;
-
   return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleClose}>
-        <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full mx-4 h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <>
+      <style>
+        {`
+          .first-line-bold::first-line {
+            font-weight: bold;
+          }
+        `}
+      </style>
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+        onMouseDown={handleBackdropMouseDown}
+        onClick={handleBackdropClick}
+      >
+        <div 
+          className="bg-white rounded-lg shadow-xl max-w-5xl w-full mx-4 h-[80vh] overflow-hidden" 
+          onMouseDown={handleModalMouseDown}
+          onClick={(e) => e.stopPropagation()}
+        >
 
         <form onSubmit={handleSubmit} className="p-4 h-full flex flex-col">
-          <div className="mb-4">
-            <label htmlFor="content" className="block text-base font-medium text-gray-700 mb-1">
-              Содержимое карточки *
-            </label>
-          </div>
           <div className="flex-1">
-            <textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="w-full h-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
-              placeholder="Введите название карточки (первая строка)&#10;И описание карточки (остальные строки)"
-              required
-              autoFocus
-            />
+              <textarea
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full h-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-0 focus:border-gray-300 resize-none first-line-bold"
+                placeholder="Введите название карточки (первая строка)&#10;И описание карточки (остальные строки)"
+                required
+                autoFocus
+                style={{
+                  fontFamily: 'monospace',
+                  lineHeight: '1.5',
+                  fontWeight: 'normal'
+                }}
+              />
           </div>
 
           <div className="flex justify-between items-center mt-4">
             <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
-              >
-                Отмена
-              </button>
+            <button
+              type="button"
+              onClick={handleCloseWithoutSave}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
+            >
+              Отмена
+            </button>
               
               <button
                 type="submit"
-                disabled={isLoading || !parseContent(content).title.trim()}
+                disabled={isLoading}
                 className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 {isLoading ? (isEditMode ? 'Сохранение...' : 'Создание...') : (isEditMode ? 'Сохранить' : 'Создать')}
@@ -236,6 +283,7 @@ const CardModal: React.FC<CardModalProps> = ({
         </div>
       )}
     </div>
+    </>
   );
 };
 
