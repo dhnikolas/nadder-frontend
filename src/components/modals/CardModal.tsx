@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { CardResponse, CreateCardRequest, StatusResponse, MoveCardRequest } from '../../types/api';
 
 interface CardModalProps {
@@ -36,6 +36,7 @@ const CardModal: React.FC<CardModalProps> = ({
   const [selectedStatusId, setSelectedStatusId] = useState<number | null>(null);
   const [isMouseDownInside, setIsMouseDownInside] = useState(false);
   const [initialContent, setInitialContent] = useState(getInitialContent);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Функция для разделения контента на название и описание
   const parseContent = (text: string) => {
@@ -63,6 +64,16 @@ const CardModal: React.FC<CardModalProps> = ({
       }
     }
   }, [card, isOpen]);
+
+  // Устанавливаем курсор в конец текста только один раз при открытии
+  useEffect(() => {
+    if (isOpen && textareaRef.current) {
+      const textarea = textareaRef.current;
+      const textLength = textarea.value.length;
+      textarea.setSelectionRange(textLength, textLength);
+      textarea.focus();
+    }
+  }, [isOpen]); // Только при изменении isOpen, не при изменении content
 
   const isEditMode = !!card;
 
@@ -187,6 +198,7 @@ const CardModal: React.FC<CardModalProps> = ({
         <form onSubmit={handleSubmit} className="p-4 h-full flex flex-col">
           <div className="flex-1">
               <textarea
+                ref={textareaRef}
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
