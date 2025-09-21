@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { CardResponse, CreateCardRequest, StatusResponse, MoveCardRequest } from '../../types/api';
 
 interface CardModalProps {
@@ -22,7 +22,15 @@ const CardModal: React.FC<CardModalProps> = ({
   statusId,
   statuses = [],
 }) => {
-  const [content, setContent] = useState('');
+  // Инициализируем контент сразу при получении карточки
+  const getInitialContent = () => {
+    if (card) {
+      return card.title + (card.description ? '\n' + card.description : '');
+    }
+    return '';
+  };
+
+  const [content, setContent] = useState(getInitialContent);
   const [isLoading, setIsLoading] = useState(false);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [selectedStatusId, setSelectedStatusId] = useState<number | null>(null);
@@ -35,29 +43,15 @@ const CardModal: React.FC<CardModalProps> = ({
     return { title, description };
   };
 
-  useEffect(() => {
+  // Обновляем контент при изменении карточки
+  useLayoutEffect(() => {
     if (card) {
-      // Объединяем название и описание в один контент
       const combinedContent = card.title + (card.description ? '\n' + card.description : '');
       setContent(combinedContent);
-    } else {
-      // Сбрасываем поле при создании новой карточки
+    } else if (isOpen) {
       setContent('');
     }
-  }, [card]);
-
-  // Сбрасываем поле при открытии модального окна
-  useEffect(() => {
-    if (isOpen) {
-      if (card) {
-        // Объединяем название и описание в один контент
-        const combinedContent = card.title + (card.description ? '\n' + card.description : '');
-        setContent(combinedContent);
-      } else {
-        setContent('');
-      }
-    }
-  }, [isOpen, card]);
+  }, [card, isOpen]);
 
   const isEditMode = !!card;
 
@@ -135,6 +129,9 @@ const CardModal: React.FC<CardModalProps> = ({
 
 
   if (!isOpen) return null;
+
+  // Проверяем, что контент готов (для режима редактирования)
+  if (card && !content) return null;
 
   return (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleClose}>
@@ -243,3 +240,4 @@ const CardModal: React.FC<CardModalProps> = ({
 };
 
 export default CardModal;
+
