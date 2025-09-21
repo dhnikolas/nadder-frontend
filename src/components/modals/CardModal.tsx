@@ -134,13 +134,13 @@ const CardModal: React.FC<CardModalProps> = ({
         // Режим редактирования - сохраняем даже пустую карточку
         await onUpdate(card.id, {
           title: title.trim() || 'Без названия',
-          description: description.trim() || undefined,
+          description: description.trim(),
         });
       } else if (!isEditMode && onCreateCard && statusId) {
         // Режим создания - сохраняем даже пустую карточку
         await onCreateCard({
           title: title.trim() || 'Без названия',
-          description: description.trim() || undefined,
+          description: description.trim(),
         });
       }
       onClose();
