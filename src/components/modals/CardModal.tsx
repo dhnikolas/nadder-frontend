@@ -7,7 +7,6 @@ interface CardModalProps {
   card?: CardResponse | null; // undefined для создания новой карточки
   onUpdate?: (cardId: number, cardData: { title?: string; description?: string }) => Promise<void>;
   onCreateCard?: (cardData: CreateCardRequest) => Promise<void>;
-  onDelete?: (cardId: number) => Promise<void>; // для удаления карточки
   statusId?: number; // ID статуса для создания карточки
 }
 
@@ -17,33 +16,39 @@ const CardModal: React.FC<CardModalProps> = ({
   card,
   onUpdate,
   onCreateCard,
-  onDelete,
   statusId,
 }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Функция для разделения контента на название и описание
+  const parseContent = (text: string) => {
+    const lines = text.split('\n');
+    const title = lines[0] || '';
+    const description = lines.slice(1).join('\n');
+    return { title, description };
+  };
 
   useEffect(() => {
     if (card) {
-      setTitle(card.title);
-      setDescription(card.description || '');
+      // Объединяем название и описание в один контент
+      const combinedContent = card.title + (card.description ? '\n' + card.description : '');
+      setContent(combinedContent);
     } else {
-      // Сбрасываем поля при создании новой карточки
-      setTitle('');
-      setDescription('');
+      // Сбрасываем поле при создании новой карточки
+      setContent('');
     }
   }, [card]);
 
-  // Сбрасываем поля при открытии модального окна
+  // Сбрасываем поле при открытии модального окна
   useEffect(() => {
     if (isOpen) {
       if (card) {
-        setTitle(card.title);
-        setDescription(card.description || '');
+        // Объединяем название и описание в один контент
+        const combinedContent = card.title + (card.description ? '\n' + card.description : '');
+        setContent(combinedContent);
       } else {
-        setTitle('');
-        setDescription('');
+        setContent('');
       }
     }
   }, [isOpen, card]);
@@ -52,6 +57,7 @@ const CardModal: React.FC<CardModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { title, description } = parseContent(content);
     if (!title.trim()) return;
 
     setIsLoading(true);
@@ -80,31 +86,16 @@ const CardModal: React.FC<CardModalProps> = ({
   const handleClose = () => {
     if (!isLoading) {
       if (isEditMode && card) {
-        setTitle(card.title);
-        setDescription(card.description || '');
+        // Объединяем название и описание в один контент
+        const combinedContent = card.title + (card.description ? '\n' + card.description : '');
+        setContent(combinedContent);
       } else {
-        setTitle('');
-        setDescription('');
+        setContent('');
       }
       onClose();
     }
   };
 
-  const handleDelete = async () => {
-    if (!isEditMode || !card || !onDelete) return;
-    
-    if (window.confirm('Вы уверены, что хотите удалить эту карточку?')) {
-      setIsLoading(true);
-      try {
-        await onDelete(card.id);
-        handleClose();
-      } catch (error) {
-        console.error('Ошибка удаления карточки:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -115,66 +106,37 @@ const CardModal: React.FC<CardModalProps> = ({
         <form onSubmit={handleSubmit} className="p-4 overflow-y-auto max-h-[calc(90vh-32px)]">
           <div className="space-y-4">
             <div>
-                          <label htmlFor="title" className="block text-base font-medium text-gray-700 mb-1">
-              Название карточки *
-            </label>
-              <input
-                type="text"
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Введите название карточки"
+              <label htmlFor="content" className="block text-base font-medium text-gray-700 mb-1">
+                Содержимое карточки *
+              </label>
+              <textarea
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={12}
+                className="w-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                placeholder="Введите название карточки (первая строка)&#10;И описание карточки (остальные строки)"
                 required
                 autoFocus
               />
             </div>
-
-            <div>
-                          <label htmlFor="description" className="block text-base font-medium text-gray-700 mb-1">
-              Описание карточки
-            </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={10}
-                className="w-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
-                placeholder="Введите подробное описание карточки (необязательно)"
-              />
-            </div>
           </div>
 
-          <div className="flex justify-between items-center mt-4">
-            {/* Кнопка удаления (только в режиме редактирования) */}
-            {isEditMode && card && onDelete && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isLoading}
-                className="px-4 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors font-medium border border-red-200 hover:border-red-300"
-              >
-                Удалить
-              </button>
-            )}
-            
-            {/* Кнопки справа */}
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading || !title.trim()}
-                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {isLoading ? (isEditMode ? 'Сохранение...' : 'Создание...') : (isEditMode ? 'Сохранить' : 'Создать')}
-              </button>
-            </div>
+          <div className="flex justify-start space-x-3 mt-4">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading || !parseContent(content).title.trim()}
+              className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {isLoading ? (isEditMode ? 'Сохранение...' : 'Создание...') : (isEditMode ? 'Сохранить' : 'Создать')}
+            </button>
           </div>
         </form>
       </div>
