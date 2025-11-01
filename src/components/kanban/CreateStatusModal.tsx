@@ -18,8 +18,29 @@ const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
   const [color, setColor] = useState('#3B82F6');
 
   const colorOptions = [
-    '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
-    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+    // Базовые цвета
+    '#EF4444', // красный
+    '#F97316', // оранжевый
+    '#F59E0B', // янтарный
+    '#84CC16', // лайм
+    '#10B981', // изумрудный
+    '#06B6D4', // циан
+    '#3B82F6', // синий
+    '#6366F1', // индиго
+    '#8B5CF6', // фиолетовый
+    '#EC4899', // розовый
+    '#F43F5E', // розовый
+    '#14B8A6', // бирюзовый
+    // Серые оттенки
+    '#6B7280', // серый
+    '#374151', // темно-серый
+    '#9CA3AF', // светло-серый
+    // Дополнительные базовые цвета
+    '#DC2626', // темно-красный
+    '#059669', // темно-зеленый
+    '#2563EB', // темно-синий
+    '#7C3AED', // темно-фиолетовый
+    '#1F2937', // почти черный
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +63,7 @@ const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">Создать статус</h3>
@@ -76,16 +97,17 @@ const CreateStatusModal: React.FC<CreateStatusModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Цвет статуса
             </label>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
               {colorOptions.map((colorOption) => (
                 <button
                   key={colorOption}
                   type="button"
                   onClick={() => setColor(colorOption)}
-                  className={`w-8 h-8 rounded-full border-2 ${
-                    color === colorOption ? 'border-gray-400' : 'border-transparent'
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                    color === colorOption ? 'border-gray-600 scale-110' : 'border-transparent hover:border-gray-300'
                   }`}
                   style={{ backgroundColor: colorOption }}
+                  title={`Выбрать цвет: ${colorOption}`}
                 />
               ))}
             </div>

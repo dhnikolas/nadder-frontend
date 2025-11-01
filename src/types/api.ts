@@ -84,6 +84,7 @@ export interface UpdateStatusRequest {
   name?: string;
   color?: string;
   sort_order?: number;
+  collapsed?: boolean;
 }
 
 export interface StatusResponse {
@@ -92,6 +93,7 @@ export interface StatusResponse {
   color: string;
   pipeline_id: number;
   sort_order: number;
+  collapsed: boolean;
   created_at: string;
   updated_at: string;
 }

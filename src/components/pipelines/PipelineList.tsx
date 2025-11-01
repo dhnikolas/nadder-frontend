@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Settings } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
 import { PipelineResponse, CreatePipelineRequest } from '../../types/api';
 import apiService from '../../services/api';
 import CreatePipelineModal from './CreatePipelineModal';
-import PipelineSettingsModal from './PipelineSettingsModal';
 
 interface PipelineListProps {
   projectId: number;
   pipelines: PipelineResponse[];
   selectedPipeline: PipelineResponse | null;
   onPipelineSelect: (pipeline: PipelineResponse) => void;
-  onSettingsOpen: (isOpen: boolean) => void;
   onPipelineUpdate: () => Promise<void>;
   onStatusesUpdate?: () => void;
 }
@@ -22,7 +20,6 @@ interface DraggablePipelineProps {
   isSelected: boolean;
   onSelect: (pipeline: PipelineResponse) => void;
   onDelete: (id: number) => void;
-  onSettingsOpen: () => void;
   onMove: (dragIndex: number, hoverIndex: number) => void;
   onDropComplete: () => void;
 }
@@ -35,7 +32,6 @@ const DraggablePipeline: React.FC<DraggablePipelineProps> = ({
   isSelected,
   onSelect,
   onDelete,
-  onSettingsOpen,
   onMove,
   onDropComplete,
 }) => {
@@ -136,17 +132,6 @@ const DraggablePipeline: React.FC<DraggablePipelineProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onSettingsOpen();
-            }}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded"
-            title="Настройки"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
-          
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
               onDelete(pipeline.id);
             }}
             className="p-1 text-red-400 hover:text-red-600 rounded"
@@ -165,12 +150,10 @@ const PipelineList: React.FC<PipelineListProps> = ({
   pipelines,
   selectedPipeline,
   onPipelineSelect,
-  onSettingsOpen,
   onPipelineUpdate,
   onStatusesUpdate,
 }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
   const [localPipelines, setLocalPipelines] = useState<PipelineResponse[]>([]);
@@ -223,10 +206,6 @@ const PipelineList: React.FC<PipelineListProps> = ({
     } catch (error) {
       console.error('Ошибка удаления pipeline:', error);
     }
-  };
-
-  const openSettings = () => {
-    setIsSettingsModalOpen(true);
   };
 
   const handleMovePipeline = (dragIndex: number, hoverIndex: number) => {
@@ -308,10 +287,6 @@ const PipelineList: React.FC<PipelineListProps> = ({
               onPipelineSelect(pipeline);
             }}
             onDelete={handleDeletePipeline}
-            onSettingsOpen={() => {
-              onSettingsOpen(true);
-              openSettings();
-            }}
             onMove={handleMovePipeline}
             onDropComplete={handleDropComplete}
           />
@@ -319,27 +294,11 @@ const PipelineList: React.FC<PipelineListProps> = ({
       </div>
 
       {/* Модальное окно создания pipeline */}
-              <CreatePipelineModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreatePipeline={handleCreatePipeline}
-          isLoading={isLoading}
-        />
-
-      {/* Модальное окно настроек pipeline */}
-      <PipelineSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => {
-          setIsSettingsModalOpen(false);
-          onSettingsOpen(false);
-          // Принудительно сбрасываем состояние через небольшую задержку
-          setTimeout(() => {
-            onSettingsOpen(false);
-          }, 100);
-        }}
-        pipeline={selectedPipeline}
-        projectId={projectId}
-        onStatusesUpdate={onStatusesUpdate}
+      <CreatePipelineModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreatePipeline={handleCreatePipeline}
+        isLoading={isLoading}
       />
     </div>
   );

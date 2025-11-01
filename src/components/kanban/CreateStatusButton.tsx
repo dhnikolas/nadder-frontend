@@ -1,17 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 
 interface CreateStatusButtonProps {
   onCreateStatus: (name: string) => Promise<void>;
   isLoading?: boolean;
+  autoOpen?: boolean; // Автоматически открывать форму
 }
 
 const CreateStatusButton: React.FC<CreateStatusButtonProps> = ({ 
   onCreateStatus, 
-  isLoading = false 
+  isLoading = false,
+  autoOpen = false
 }) => {
   const [statusName, setStatusName] = useState('');
-  const [isInputVisible, setIsInputVisible] = useState(false);
+  const [isInputVisible, setIsInputVisible] = useState(autoOpen);
+  
+  // Обновляем состояние, если изменился autoOpen
+  useEffect(() => {
+    if (autoOpen) {
+      setIsInputVisible(true);
+    }
+  }, [autoOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +48,7 @@ const CreateStatusButton: React.FC<CreateStatusButtonProps> = ({
 
   if (isInputVisible) {
     return (
-      <div className="w-64 bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+      <div className={`bg-white border border-gray-300 rounded-lg p-4 shadow-sm ${autoOpen ? 'w-80' : 'w-64'}`}>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label htmlFor="statusName" className="block text-sm font-medium text-gray-700 mb-1">

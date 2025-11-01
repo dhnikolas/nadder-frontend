@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StatusResponse, CardResponse, CreateCardRequest, BulkCardSortRequest, MoveCardRequest } from '../../types/api';
+import { StatusResponse, CardResponse, CreateCardRequest, BulkCardSortRequest, MoveCardRequest, UpdateStatusRequest } from '../../types/api';
 import { apiService } from '../../services/api';
 import StatusColumn from './StatusColumn';
 import CreateStatusButton from './CreateStatusButton';
@@ -222,7 +222,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   }, [projectId]);
 
   // Обновление статуса
-  const handleUpdateStatus = useCallback(async (statusId: number, data: { name?: string; color?: string }) => {
+  const handleUpdateStatus = useCallback(async (statusId: number, data: UpdateStatusRequest) => {
     try {
       const updatedStatus = await apiService.updateStatus(projectId, pipelineId, statusId, data);
       
@@ -238,6 +238,69 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
       console.error('❌ Error updating status:', error);
       throw error;
     }
+  }, [projectId, pipelineId]);
+
+  // Удаление статуса
+  const handleDeleteStatus = useCallback(async (statusId: number) => {
+    try {
+      await apiService.deleteStatus(projectId, pipelineId, statusId);
+      
+      // Удаляем статус из списка
+      setStatuses(prev => prev.filter(status => status.id !== statusId));
+      
+      // Удаляем карточки этого статуса
+      setCards(prev => {
+        const newCards = { ...prev };
+        delete newCards[statusId];
+        return newCards;
+      });
+      
+      // Перезагружаем данные для обновления sort_order
+      await loadData();
+      
+    } catch (error) {
+      console.error('❌ Error deleting status:', error);
+      throw error;
+    }
+  }, [projectId, pipelineId, loadData]);
+
+  // Перемещение статуса
+  const handleMoveStatus = useCallback((fromIndex: number, toIndex: number) => {
+    setStatuses(prev => {
+      // Сортируем по sort_order
+      const sorted = [...prev].sort((a, b) => a.sort_order - b.sort_order);
+      
+      // Если индексы одинаковые, ничего не делаем
+      if (fromIndex === toIndex) {
+        return prev;
+      }
+      
+      // Удаляем статус из старой позиции
+      const [moved] = sorted.splice(fromIndex, 1);
+      
+      // Вставляем в новую позицию
+      sorted.splice(toIndex, 0, moved);
+      
+      // Обновляем sort_order для всех статусов
+      const updated = sorted.map((status, index) => ({
+        ...status,
+        sort_order: index + 1,
+      }));
+      
+      // Обновляем sort_order на сервере для измененных статусов
+      updated.forEach((status, index) => {
+        const oldStatus = prev.find(s => s.id === status.id);
+        if (oldStatus && oldStatus.sort_order !== index + 1) {
+          apiService.updateStatus(projectId, pipelineId, status.id, {
+            sort_order: index + 1,
+          }).catch(error => {
+            console.error('❌ Error updating status sort_order:', error);
+          });
+        }
+      });
+      
+      return updated;
+    });
   }, [projectId, pipelineId]);
 
   // Создание статуса
@@ -431,36 +494,46 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
 
   if (statuses.length === 0) {
     return (
-      <div className="flex-1 bg-gray-50 p-8 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 text-lg mb-4">Нет статусов в этом пайплайне</p>
-          <p className="text-gray-500">Создайте статусы для управления карточками</p>
+      <div className="flex-1 bg-gray-50 ml-2">
+        <div className="flex space-x-2 pb-4 pt-4">
+          {/* Кнопка создания первого статуса с автоматически открытой формой */}
+          <CreateStatusButton
+            onCreateStatus={handleCreateStatus}
+            isLoading={isLoading}
+            autoOpen={true}
+          />
         </div>
       </div>
     );
   }
 
+  const sortedStatuses = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
+
   return (
     <div className="flex-1 bg-gray-50 ml-2">
       <div className="flex space-x-2 pb-4">
-        {statuses
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((status, index) => (
+        {sortedStatuses.map((status, index) => {
+          const isLastStatus = index === sortedStatuses.length - 1;
+          return (
             <StatusColumn
               key={`status-${status.id}`}
               status={status}
               cards={cards[status.id] || []}
               index={index}
+              isLastStatus={isLastStatus}
               onCreateCard={handleCreateCard}
               onUpdateCard={handleUpdateCard}
               onDeleteCard={handleDeleteCard}
               moveCardInUI={moveCardInUI}
               saveChangesToAPI={saveChangesToAPI}
               onUpdateStatus={handleUpdateStatus}
+              onDeleteStatus={handleDeleteStatus}
+              onMoveStatus={handleMoveStatus}
               onCreateCardClick={handleCreateCardClick}
               onCardClick={handleCardClick}
             />
-          ))}
+          );
+        })}
         
         {/* Кнопка создания нового статуса */}
         <CreateStatusButton

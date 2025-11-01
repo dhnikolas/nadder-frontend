@@ -17,7 +17,6 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [selectedProject, setSelectedProject] = useState<ProjectResponse | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineResponse | null>(null);
-  const [isPipelineSettingsOpen, setIsPipelineSettingsOpen] = useState(false);
   const [isRestoringData, setIsRestoringData] = useState(true); // Состояние восстановления данных
   const [forceReloadKey, setForceReloadKey] = useState<string>(''); // Ключ для принудительной перезагрузки Kanban
   const [isBackupManagerOpen, setIsBackupManagerOpen] = useState(false); // Состояние менеджера бекапов
@@ -25,10 +24,6 @@ const Dashboard: React.FC = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); // Состояние выпадающего меню пользователя
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false); // Состояние модального окна смены пароля
 
-
-  // Логируем изменения состояния настроек pipeline
-  useEffect(() => {
-  }, [isPipelineSettingsOpen]);
 
   // Закрытие выпадающего меню при клике вне его
   useEffect(() => {
@@ -460,7 +455,6 @@ const Dashboard: React.FC = () => {
                     pipelines={pipelines}
                     selectedPipeline={selectedPipeline}
                     onPipelineSelect={handlePipelineSelect}
-                    onSettingsOpen={setIsPipelineSettingsOpen}
                     onPipelineUpdate={handlePipelineUpdate}
                     onStatusesUpdate={() => {
                       // Принудительно перезагружаем данные Kanban доски

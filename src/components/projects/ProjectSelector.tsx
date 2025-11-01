@@ -189,7 +189,7 @@ const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, selectedPro
 
       {/* Модальное окно подтверждения удаления проекта */}
       {isDeleting && projectToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={cancelDeleteProject}></div>
           <div className="relative bg-white rounded-lg shadow-xl p-6 w-96 max-w-md mx-4">
             <div className="flex items-center mb-4">

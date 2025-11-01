@@ -185,7 +185,7 @@ const CardModal: React.FC<CardModalProps> = ({
         `}
       </style>
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]" 
         onMouseDown={handleBackdropMouseDown}
         onClick={handleBackdropClick}
       >
@@ -250,7 +250,7 @@ const CardModal: React.FC<CardModalProps> = ({
 
       {/* Модальное окно выбора статуса для перемещения */}
       {isMoveModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60" onClick={handleMoveCancel}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1001]" onClick={handleMoveCancel}>
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Переместить карточку</h3>
