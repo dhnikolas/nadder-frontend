@@ -3,7 +3,6 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
 import { PipelineResponse, CreatePipelineRequest } from '../../types/api';
 import apiService from '../../services/api';
-import CreatePipelineModal from './CreatePipelineModal';
 
 interface PipelineListProps {
   projectId: number;
@@ -153,7 +152,8 @@ const PipelineList: React.FC<PipelineListProps> = ({
   onPipelineUpdate,
   onStatusesUpdate,
 }) => {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [pipelineName, setPipelineName] = useState('');
+  const [isInputVisible, setIsInputVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
   const [localPipelines, setLocalPipelines] = useState<PipelineResponse[]>([]);
@@ -164,11 +164,15 @@ const PipelineList: React.FC<PipelineListProps> = ({
     setLocalPipelines(pipelines);
   }, [pipelines]);
 
-  const handleCreatePipeline = async (pipelineData: CreatePipelineRequest) => {
+  const handleCreatePipeline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pipelineName.trim()) return;
+
     setIsLoading(true);
     try {
       const newPipeline = await apiService.createPipeline(projectId, {
-        ...pipelineData,
+        name: pipelineName.trim(),
+        color: '#3B82F6', // Цвет по умолчанию
         sort_order: localPipelines.length + 1, // Начинаем с 1, а не с 0
       });
       
@@ -177,11 +181,23 @@ const PipelineList: React.FC<PipelineListProps> = ({
       
       // Автоматически выбираем новый pipeline
       onPipelineSelect(newPipeline);
-      setIsCreateModalOpen(false);
+      setPipelineName('');
+      setIsInputVisible(false);
     } catch (error) {
       console.error('Ошибка создания pipeline:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setPipelineName('');
+    setIsInputVisible(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      handleCancel();
     }
   };
 
@@ -264,15 +280,60 @@ const PipelineList: React.FC<PipelineListProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 w-64 flex flex-col overflow-visible relative z-10">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 relative">
         <h3 className="text-lg font-medium text-gray-900">Pipeline</h3>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="p-1 text-gray-400 hover:text-gray-600 rounded"
-          title="Добавить pipeline"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsInputVisible(true)}
+            disabled={isLoading || isInputVisible}
+            className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Добавить pipeline"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+
+          {/* Форма создания pipeline - выпадающее меню рядом с плюсом */}
+          {isInputVisible && (
+            <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg z-20">
+              <form onSubmit={handleCreatePipeline} className="p-4 space-y-3">
+                <div>
+                  <label htmlFor="pipelineName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Название pipeline
+                  </label>
+                  <input
+                    id="pipelineName"
+                    type="text"
+                    value={pipelineName}
+                    onChange={(e) => setPipelineName(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Введите название pipeline"
+                    autoFocus
+                    disabled={isLoading}
+                  />
+                </div>
+                
+                <div className="flex space-x-2">
+                  <button
+                    type="submit"
+                    disabled={!pipelineName.trim() || isLoading}
+                    className="flex-1 px-3 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Создание...' : 'Создать'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={isLoading}
+                    className="px-3 py-2 text-gray-600 text-sm font-medium rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Список pipeline */}
@@ -292,14 +353,6 @@ const PipelineList: React.FC<PipelineListProps> = ({
           />
         ))}
       </div>
-
-      {/* Модальное окно создания pipeline */}
-      <CreatePipelineModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreatePipeline={handleCreatePipeline}
-        isLoading={isLoading}
-      />
     </div>
   );
 };
