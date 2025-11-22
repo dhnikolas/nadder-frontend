@@ -127,15 +127,9 @@ const CardModal: React.FC<CardModalProps> = ({
     setIsMouseDownInside(true);
   };
 
-  // Функция 1: Закрывает и сохраняет карточку если есть изменения
-  const handleSaveAndClose = async () => {
+  // Функция: Сохраняет карточку без закрытия окна
+  const handleSave = async () => {
     if (isLoading) return;
-
-    // Проверяем, есть ли изменения
-    if (!hasChanges()) {
-      onClose();
-      return;
-    }
 
     const { title, description } = parseContent(content);
 
@@ -147,19 +141,38 @@ const CardModal: React.FC<CardModalProps> = ({
           title: title.trim() || 'Без названия',
           description: description.trim(),
         });
+        // Обновляем initialContent после успешного сохранения
+        const newContent = (title.trim() || 'Без названия') + (description.trim() ? '\n' + description.trim() : '');
+        setInitialContent(newContent);
       } else if (!isEditMode && onCreateCard && statusId) {
         // Режим создания - сохраняем даже пустую карточку
         await onCreateCard({
           title: title.trim() || 'Без названия',
           description: description.trim(),
         });
+        // Обновляем initialContent после успешного создания
+        const newContent = (title.trim() || 'Без названия') + (description.trim() ? '\n' + description.trim() : '');
+        setInitialContent(newContent);
       }
-      onClose();
     } catch (error) {
       console.error('Ошибка сохранения карточки:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Функция 1: Закрывает и сохраняет карточку если есть изменения
+  const handleSaveAndClose = async () => {
+    if (isLoading) return;
+
+    // Проверяем, есть ли изменения
+    if (!hasChanges()) {
+      onClose();
+      return;
+    }
+
+    await handleSave();
+    onClose();
   };
 
   // Функция 2: Закрывает и не сохраняет карточку
@@ -169,7 +182,7 @@ const CardModal: React.FC<CardModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await handleSaveAndClose();
+    await handleSave();
   };
 
 
@@ -226,7 +239,7 @@ const CardModal: React.FC<CardModalProps> = ({
               
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !hasChanges()}
                 className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 {isLoading ? (isEditMode ? 'Сохранение...' : 'Создание...') : (isEditMode ? 'Сохранить' : 'Создать')}

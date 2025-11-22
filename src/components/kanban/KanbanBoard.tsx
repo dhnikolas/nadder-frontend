@@ -549,12 +549,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         onCreateCard={async (cardData) => {
           if (createCardStatusId) {
             await handleCreateCard(createCardStatusId, cardData, createCardPosition);
-            setIsCardModalOpen(false);
+            // Не закрываем окно после создания - пользователь может продолжить редактирование
           }
         }}
         onUpdate={async (cardId, cardData) => {
           await handleUpdateCard(cardId, cardData);
-          setIsCardModalOpen(false);
+          // Не закрываем окно после обновления - пользователь может продолжить редактирование
         }}
         onMoveCard={handleMoveCard}
         card={createCardStatusId ? null : selectedCard}
