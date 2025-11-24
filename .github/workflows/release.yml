@@ -1,0 +1,98 @@
+name: Release macOS Build
+
+on:
+  push:
+    tags:
+      - 'v*'  # Триггер при создании тега, начинающегося с 'v'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+          echo "Tag: $TAG_NAME"
+
+      - name: Update version in package.json
+        run: |
+          npm version ${{ steps.get_version.outputs.version }} --no-git-tag-version
+          echo "Updated package.json version to ${{ steps.get_version.outputs.version }}"
+
+      - name: Generate icon
+        run: |
+          node scripts/generate-icon.js
+          node scripts/create-icon-icns.js
+
+      - name: Build React app
+        run: npm run build:electron
+        env:
+          REACT_APP_API_URL: https://nadder.ru/api/v1
+          PUBLIC_URL: ./
+
+      - name: Compile Electron
+        run: npm run electron:compile
+
+      - name: Build Electron for macOS
+        run: npm run electron:build:mac
+        env:
+          REACT_APP_API_URL: https://nadder.ru/api/v1
+          PUBLIC_URL: ./
+
+      - name: List build artifacts
+        run: |
+          cd dist-electron
+          echo "Build artifacts:"
+          ls -lh *.dmg *.zip 2>/dev/null || true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist-electron/*.dmg
+            dist-electron/*.zip
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## Nadder Desktop для macOS
+            
+            Версия: **${{ steps.get_version.outputs.version }}**
+            
+            ### Скачать
+            
+            - **Intel Mac (x64)**: `Nadder-${{ steps.get_version.outputs.version }}-x64.dmg`
+            - **Apple Silicon (arm64)**: `Nadder-${{ steps.get_version.outputs.version }}-arm64.dmg`
+            - **Архивы**: ZIP файлы для обеих архитектур
+            
+            ### Установка
+            
+            1. Скачайте соответствующий `.dmg` файл для вашей архитектуры
+            2. Откройте `.dmg` файл
+            3. Перетащите приложение в папку Applications
+            4. Запустите приложение из Applications
+            
+            **Примечание:** При первом запуске macOS может показать предупреждение о безопасности. Перейдите в Системные настройки → Безопасность и конфиденциальность и нажмите "Открыть в любом случае".
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
