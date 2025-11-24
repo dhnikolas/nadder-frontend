@@ -83,7 +83,7 @@ jspm_packages/
 
 # Gatsby files
 .cache/
-public
+# Не игнорируем public, так как там находятся статические файлы и иконки
 
 # Storybook build outputs
 .out
@@ -92,3 +92,10 @@ public
 # Temporary folders
 tmp/
 temp/
+
+# Electron
+electron/dist/
+dist-electron/
+*.dmg
+*.zip
+.env.production

@@ -22,6 +22,7 @@ Nadder - это веб-приложение для управления прое
 - **Axios** - HTTP клиент
 - **React Beautiful DnD** - Drag & Drop функциональность
 - **Lucide React** - Иконки
+- **Electron** - Desktop приложение (macOS)
 
 ## Структура проекта
 
@@ -59,15 +60,144 @@ npm start
 
 Приложение будет доступно по адресу [http://localhost:3000](http://localhost:3000).
 
-### Сборка для продакшена
+### Сборка для продакшена (Web)
 
 ```bash
 npm run build
+# или
+npm run build:web
 ```
+
+Собранные файлы будут в папке `build/`.
+
+## Desktop версия (macOS)
+
+Приложение также доступно как нативное macOS приложение, созданное с помощью Electron.
+
+### Установка зависимостей для Desktop
+
+```bash
+npm install
+```
+
+### Запуск Desktop версии в режиме разработки
+
+```bash
+npm run electron:dev
+```
+
+Эта команда запустит React dev server и Electron приложение одновременно.
+
+### Сборка Desktop приложения для macOS
+
+```bash
+npm run electron:build:mac
+```
+
+Эта команда:
+1. Соберет React приложение с API URL `https://nadder.ru/api/v1`
+2. Создаст macOS приложение (.app, .dmg, .zip)
+
+Собранное приложение будет находиться в папке `dist-electron/` в форматах:
+- `.dmg` - установщик для macOS (x64 и arm64)
+- `.zip` - архив с приложением
+
+### Запуск собранного Desktop приложения
+
+После сборки вы можете:
+1. Открыть `.dmg` файл и перетащить приложение в папку Applications
+2. Или распаковать `.zip` и запустить приложение напрямую
+
+**Примечание:** При первом запуске macOS может показать предупреждение о безопасности. В этом случае:
+- Перейдите в Системные настройки → Безопасность и конфиденциальность
+- Нажмите "Открыть в любом случае" рядом с предупреждением
+
+### Генерация и установка иконки приложения
+
+Иконка приложения (буква N на синем фоне) используется как для Desktop (macOS), так и для Web версии. Иконка генерируется автоматически при сборке, но вы можете пересоздать её вручную:
+
+#### Автоматическая генерация
+
+```bash
+# Создать все файлы иконки (SVG, PNG, ICNS, веб-иконки)
+node scripts/generate-icon.js
+```
+
+Эта команда автоматически создаст:
+- SVG иконку
+- PNG иконку (1024x1024)
+- Веб-иконки (favicon, apple-touch-icon, android-chrome и т.д.)
+
+Для Desktop версии дополнительно создайте ICNS:
+```bash
+node scripts/create-icon-icns.js
+```
+
+Или одной командой для полной генерации:
+```bash
+node scripts/generate-icon.js && node scripts/create-icon-icns.js
+```
+
+#### Что создается
+
+1. **SVG иконка** (`build/icons/icon.svg`) - исходный файл с буквой N на синем фоне
+2. **PNG иконка** (`build/icons/icon.png`) - растровое изображение 1024x1024
+3. **ICNS иконка** (`assets/icons/icon.icns`) - macOS иконка со всеми необходимыми размерами
+
+#### Структура файлов
+
+```
+build/icons/
+├── icon.svg          # Исходный SVG файл
+├── icon.png          # PNG 1024x1024
+├── icon.icns         # macOS иконка
+└── icon.iconset/     # Временная папка с размерами
+
+assets/icons/
+├── icon.png          # Копия PNG
+└── icon.icns         # Копия ICNS (используется electron-builder)
+
+public/
+├── favicon.ico       # Favicon для веб-версии
+└── icons/
+    ├── favicon-16x16.png
+    ├── favicon-32x32.png
+    ├── favicon-96x96.png
+    ├── apple-touch-icon.png (180x180)
+    ├── android-chrome-192x192.png
+    └── android-chrome-512x512.png
+```
+
+#### Настройка иконки
+
+Чтобы изменить дизайн иконки, отредактируйте файл `scripts/generate-icon.js`:
+- Измените цвет фона: `fill="#3B82F6"` (синий)
+- Измените цвет буквы: `fill="white"`
+- Измените размер буквы: `font-size="700"`
+- Измените шрифт: `font-family="Arial, sans-serif"`
+
+После изменений пересоздайте иконку командами выше.
+
+#### Применение иконки
+
+Иконка автоматически применяется при сборке приложения:
+```bash
+npm run electron:build:mac
+```
+
+Если иконка не обновилась после установки:
+1. Удалите старое приложение из папки Applications
+2. Очистите кеш иконок macOS:
+   ```bash
+   sudo killall Finder
+   # или
+   sudo rm -rf /Library/Caches/com.apple.iconservices.store
+   ```
+3. Установите новое приложение заново
 
 ## API
 
-Приложение работает с бэкендом по адресу `http://localhost:8082/api/v1`.
+Приложение работает с бэкендом по адресу `https://nadder.ru/api/v1` (production) или `http://localhost:8082/api/v1` (development).
 
 ### Основные эндпоинты
 
