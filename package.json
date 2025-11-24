@@ -65,6 +65,7 @@
   "build": {
     "appId": "com.nadder.app",
     "productName": "Nadder",
+    "publish": null,
     "directories": {
       "output": "dist-electron"
     },
