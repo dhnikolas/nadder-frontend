@@ -8,10 +8,14 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: write  # Необходимо для создания релизов
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Получаем всю историю для правильной работы с тегами
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -94,6 +98,4 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
