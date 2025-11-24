@@ -27,6 +27,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   const [selectedCard, setSelectedCard] = useState<CardResponse | null>(null);
   const lastLoadRef = useRef<{ projectId: number; pipelineId: number } | null>(null);
   const loadingRef = useRef<boolean>(false); // Флаг активной загрузки
+  const cardsRef = useRef<CardsData>({}); // Ref для актуального состояния карточек
 
   // Загрузка статусов и карточек
   const loadData = useCallback(async () => {
@@ -136,6 +137,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
       lastLoadRef.current = null;
     };
   }, [projectId, pipelineId]);
+
+  // Синхронизируем ref с состоянием cards для получения актуальных данных в saveChangesToAPI
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
 
   // Создание карточки
   const handleCreateCard = useCallback(async (statusId: number, cardData: CreateCardRequest, position: 'top' | 'bottom' = 'bottom') => {
@@ -427,6 +433,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         
       }
       
+      // Обновляем ref сразу с новым состоянием для использования в saveChangesToAPI
+      cardsRef.current = newCards;
+      
       return newCards;
     });
 
@@ -450,11 +459,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
     try {
       
       // Собираем все карточки для обновления сортировки из всех затронутых статусов
+      // Используем ref для получения актуального состояния после обновления UI
+      const currentCards = cardsRef.current;
       const statusesToUpdate = fromStatusId === toStatusId ? [fromStatusId] : [fromStatusId, toStatusId];
       const allCardsToUpdate: { id: number; sort_order: number }[] = [];
       
       for (const statusId of statusesToUpdate) {
-        const statusCards = cards[statusId] || [];
+        const statusCards = currentCards[statusId] || [];
         if (statusCards && statusCards.length > 0) {
           const statusCardsToUpdate = statusCards.map((card, index) => ({
             id: card.id,
@@ -479,7 +490,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
       // В случае ошибки перезагружаем данные
       loadData();
     }
-  }, [cards, projectId, loadData]);
+  }, [projectId, loadData]);
 
   if (isLoading) {
     return (
