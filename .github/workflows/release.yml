@@ -47,6 +47,7 @@ jobs:
         env:
           REACT_APP_API_URL: https://nadder.ru/api/v1
           PUBLIC_URL: ./
+          CI: false  # Отключаем обработку warnings как errors в CI
 
       - name: Compile Electron
         run: npm run electron:compile

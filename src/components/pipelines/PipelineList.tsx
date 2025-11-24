@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
-import { PipelineResponse, CreatePipelineRequest } from '../../types/api';
+import { PipelineResponse } from '../../types/api';
 import apiService from '../../services/api';
 
 interface PipelineListProps {
