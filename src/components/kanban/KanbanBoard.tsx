@@ -364,42 +364,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
     }
   }, [projectId]);
 
-  // Функция для перемещения карточки через модальное окно
-  const handleMoveCard = useCallback(async (cardId: number, data: MoveCardRequest) => {
-    try {
-      await apiService.moveCard(projectId, cardId, data);
-      
-      // Обновляем UI после успешного перемещения
-      setCards(prev => {
-        const newCards = { ...prev };
-        
-        // Находим карточку в исходном статусе
-        let movedCard: CardResponse | null = null;
-        Object.keys(newCards).forEach(statusId => {
-          const statusIdNum = parseInt(statusId);
-          const cardIndex = newCards[statusIdNum].findIndex(card => card.id === cardId);
-          if (cardIndex !== -1) {
-            movedCard = newCards[statusIdNum][cardIndex];
-            newCards[statusIdNum].splice(cardIndex, 1);
-          }
-        });
-        
-        if (movedCard) {
-          // Добавляем карточку в новый статус
-          const targetCards = [...(newCards[data.status_id] || [])];
-          targetCards.push(Object.assign({}, movedCard, { status_id: data.status_id }) as CardResponse);
-          newCards[data.status_id] = targetCards;
-        }
-        
-        return newCards;
-      });
-      
-    } catch (error) {
-      console.error('❌ Error moving card:', error);
-      throw error;
-    }
-  }, [projectId]);
-
   // Перемещение карточки с немедленным API вызовом
   const moveCardInUI = useCallback(async (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => {
     
@@ -453,6 +417,47 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
       }
     }
   }, [projectId, loadData]);
+
+  // Функция для перемещения карточки через модальное окно
+  const handleMoveCard = useCallback(async (cardId: number, data: MoveCardRequest) => {
+    try {
+      // Используем актуальное состояние из ref
+      const currentCards = cardsRef.current;
+      
+      // Находим исходный статус карточки
+      let fromStatusId: number | null = null;
+      Object.keys(currentCards).forEach(statusId => {
+        const statusIdNum = parseInt(statusId);
+        const cardIndex = currentCards[statusIdNum].findIndex(card => card.id === cardId);
+        if (cardIndex !== -1) {
+          fromStatusId = statusIdNum;
+        }
+      });
+      
+      if (fromStatusId === null) {
+        console.error('❌ Card not found:', cardId);
+        throw new Error('Card not found');
+      }
+      
+      // Если карточка уже в целевом статусе, ничего не делаем
+      if (fromStatusId === data.status_id) {
+        return;
+      }
+      
+      // Определяем индекс для вставки (в конец массива целевого статуса)
+      const targetCards = currentCards[data.status_id] || [];
+      const toIndex = data.sort_order !== undefined ? data.sort_order : targetCards.length;
+      
+      // Обновляем UI с помощью moveCardInUI (она также вызовет API)
+      await moveCardInUI(cardId, fromStatusId, data.status_id, toIndex);
+      
+    } catch (error) {
+      console.error('❌ Error moving card:', error);
+      // В случае ошибки перезагружаем данные
+      loadData();
+      throw error;
+    }
+  }, [moveCardInUI, loadData]);
 
   // Сохранение сортировки в API (только для финального drop)
   const saveChangesToAPI = useCallback(async (cardId: number, fromStatusId: number, toStatusId: number) => {
