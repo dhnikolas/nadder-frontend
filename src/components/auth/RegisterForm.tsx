@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 
-const RegisterForm: React.FC = () => {
+interface RegisterFormProps {
+  footer?: React.ReactNode;
+}
+
+const RegisterForm: React.FC<RegisterFormProps> = ({ footer }) => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -196,6 +200,7 @@ const RegisterForm: React.FC = () => {
             </button>
           </div>
         </form>
+        {footer}
       </div>
     </div>
   );

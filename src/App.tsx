@@ -9,7 +9,6 @@ import RegisterForm from './components/auth/RegisterForm';
 import Dashboard from './components/Dashboard';
 import { isElectron } from './utils/isElectron';
 
-
 // Компонент для защищенных маршрутов
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -29,40 +28,40 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
 
-  return (
-    <div>
-      {isLogin ? (
-        <div>
-          <LoginForm />
-          <div className="text-center pb-8">
-            <p className="text-gray-600">
-              Нет аккаунта?{' '}
-              <button
-                onClick={() => setIsLogin(false)}
-                className="text-primary-600 hover:text-primary-700 font-medium"
-              >
-                Зарегистрироваться
-              </button>
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <RegisterForm />
-          <div className="text-center pb-8">
-            <p className="text-gray-600">
-              Уже есть аккаунт?{' '}
-              <button
-                onClick={() => setIsLogin(true)}
-                className="text-primary-600 hover:text-primary-700 font-medium"
-              >
-                Войти
-              </button>
-            </p>
-          </div>
-        </div>
-      )}
+  const loginFooter = (
+    <div className="text-center mt-10 pb-8">
+      <p className="text-gray-600">
+        Нет аккаунта?{' '}
+        <button
+          type="button"
+          onClick={() => setIsLogin(false)}
+          className="text-primary-600 hover:text-primary-700 font-medium"
+        >
+          Зарегистрироваться
+        </button>
+      </p>
     </div>
+  );
+
+  const registerFooter = (
+    <div className="text-center mt-10 pb-8">
+      <p className="text-gray-600">
+        Уже есть аккаунт?{' '}
+        <button
+          type="button"
+          onClick={() => setIsLogin(true)}
+          className="text-primary-600 hover:text-primary-700 font-medium"
+        >
+          Войти
+        </button>
+      </p>
+    </div>
+  );
+
+  return (
+    <>
+      {isLogin ? <LoginForm footer={loginFooter} /> : <RegisterForm footer={registerFooter} />}
+    </>
   );
 };
 
@@ -75,7 +74,7 @@ const App: React.FC = () => {
     <DndProvider backend={HTML5Backend}>
       <AuthProvider>
         <Router>
-          <div className="App">
+          <div className={isElectronApp ? 'App h-screen overflow-hidden flex flex-col' : 'App'}>
             {/* Белая полоса для перетаскивания окна (только для Electron) */}
             {isElectronApp && (
               <div 
@@ -86,8 +85,15 @@ const App: React.FC = () => {
                 } as React.CSSProperties}
               />
             )}
-            {/* Отступ для контента в Electron версии */}
-            <div style={isElectronApp ? { paddingTop: '28px' } : undefined}>
+            {/* Отступ под title bar; в Electron высота задаётся flex, без 100vh+padding */}
+            <div
+              className={
+                isElectronApp
+                  ? 'flex-1 min-h-0 flex flex-col pt-[28px]'
+                  : undefined
+              }
+            >
+              <div className={isElectronApp ? 'flex-1 min-h-0 flex flex-col' : undefined}>
               <Routes>
                 <Route path="/login" element={<AuthPage />} />
                 <Route path="/register" element={<AuthPage />} />
@@ -103,6 +109,7 @@ const App: React.FC = () => {
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </div>
             </div>
           </div>
         </Router>

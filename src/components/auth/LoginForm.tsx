@@ -3,7 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 
-const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  /** Блок под формой (например ссылка на регистрацию) */
+  footer?: React.ReactNode;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ footer }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -115,6 +120,7 @@ const LoginForm: React.FC = () => {
             </button>
           </div>
         </form>
+        {footer}
       </div>
     </div>
   );

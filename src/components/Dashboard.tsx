@@ -12,6 +12,7 @@ import ChangePasswordModal from './modals/ChangePasswordModal';
 import { ProjectResponse, PipelineResponse, CardSearchResult } from '../types/api';
 import { getSelectedProject, getSelectedPipeline, validateStoredData, saveSelectedProject, saveSelectedPipeline, clearSelectedPipeline, clearAllStoredData, saveProjectPipeline, getProjectPipeline } from '../utils/storage';
 import apiService from '../services/api';
+import { isElectron } from '../utils/isElectron';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -350,7 +351,13 @@ const Dashboard: React.FC = () => {
 
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col">
+    <div
+      className={
+        isElectron()
+          ? 'flex-1 min-h-0 bg-gray-50 flex flex-col'
+          : 'h-screen bg-gray-50 flex flex-col'
+      }
+    >
       {/* Верхняя панель */}
       <header className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8">
