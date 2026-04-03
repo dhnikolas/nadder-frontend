@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { CardResponse, CreateCardRequest, StatusResponse, MoveCardRequest } from '../../types/api';
+import { getApiErrorMessage } from '../../utils/apiError';
 import { encryptCardDescription, decryptCardDescription } from '../../utils/secretCardCrypto';
 
 interface CardModalProps {
@@ -42,6 +44,8 @@ const CardModal: React.FC<CardModalProps> = ({
   const [selectedStatusId, setSelectedStatusId] = useState<number | null>(null);
   const [isMouseDownInside, setIsMouseDownInside] = useState(false);
   const [initialContent, setInitialContent] = useState(getInitialContent);
+  const [formError, setFormError] = useState('');
+  const [moveError, setMoveError] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [secretCreateUnlocked, setSecretCreateUnlocked] = useState(false);
@@ -76,6 +80,8 @@ const CardModal: React.FC<CardModalProps> = ({
 
   useLayoutEffect(() => {
     if (!isOpen) return;
+    setFormError('');
+    setMoveError('');
     resetSecretUiState();
     if (card) {
       if (card.secret) {
@@ -99,6 +105,8 @@ const CardModal: React.FC<CardModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       resetSecretUiState();
+      setFormError('');
+      setMoveError('');
     }
   }, [isOpen]);
 
@@ -133,6 +141,7 @@ const CardModal: React.FC<CardModalProps> = ({
 
   const handleMoveClick = () => {
     if (card) {
+      setMoveError('');
       setSelectedStatusId(card.status_id);
       setIsMoveModalOpen(true);
     }
@@ -144,6 +153,7 @@ const CardModal: React.FC<CardModalProps> = ({
       return;
     }
 
+    setMoveError('');
     setIsLoading(true);
     try {
       await onMoveCard(card.id, { status_id: selectedStatusId });
@@ -151,6 +161,7 @@ const CardModal: React.FC<CardModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Ошибка перемещения карточки:', error);
+      setMoveError(getApiErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -159,6 +170,7 @@ const CardModal: React.FC<CardModalProps> = ({
   const handleMoveCancel = () => {
     setIsMoveModalOpen(false);
     setSelectedStatusId(null);
+    setMoveError('');
   };
 
   const handleBackdropMouseDown = (e: React.MouseEvent) => {
@@ -200,15 +212,16 @@ const CardModal: React.FC<CardModalProps> = ({
     }
   };
 
-  const handleSave = async () => {
-    if (isLoading) return;
+  const handleSave = async (): Promise<boolean> => {
+    if (isLoading) return false;
 
     const passwordGateCreate = isSecretCreate && !secretCreateUnlocked;
     const passwordGateEdit = Boolean(card?.secret) && !secretEditUnlocked;
-    if (passwordGateCreate || passwordGateEdit) return;
+    if (passwordGateCreate || passwordGateEdit) return false;
 
     const { title, description } = parseContent(content);
 
+    setFormError('');
     setIsLoading(true);
     try {
       if (isEditMode && card && onUpdate) {
@@ -253,9 +266,15 @@ const CardModal: React.FC<CardModalProps> = ({
         const newContent =
           (title.trim() || 'Без названия') + (description.trim() ? '\n' + description.trim() : '');
         setInitialContent(newContent);
+      } else {
+        setFormError('Не удалось сохранить: нет данных для запроса к серверу.');
+        return false;
       }
+      return true;
     } catch (error) {
       console.error('Ошибка сохранения карточки:', error);
+      setFormError(getApiErrorMessage(error));
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -267,8 +286,8 @@ const CardModal: React.FC<CardModalProps> = ({
       onClose();
       return;
     }
-    await handleSave();
-    onClose();
+    const ok = await handleSave();
+    if (ok) onClose();
   };
 
   const handleCloseWithoutSave = () => {
@@ -381,7 +400,10 @@ const CardModal: React.FC<CardModalProps> = ({
                 ref={textareaRef}
                 id="content"
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  setFormError('');
+                }}
                 disabled={textareaDisabled}
                 className="w-full flex-1 min-h-[200px] px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-0 focus:border-gray-300 resize-none first-line-bold disabled:bg-gray-50 disabled:text-gray-500"
                 placeholder={
@@ -398,6 +420,16 @@ const CardModal: React.FC<CardModalProps> = ({
                 }}
               />
             </div>
+
+            {formError && (
+              <div
+                className="mt-3 flex-shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 flex items-start gap-2"
+                role="alert"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" aria-hidden />
+                <span>{formError}</span>
+              </div>
+            )}
 
             <div className="flex justify-between items-center mt-4 flex-shrink-0">
               <div className="flex space-x-3">
@@ -442,6 +474,16 @@ const CardModal: React.FC<CardModalProps> = ({
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
               <div className="p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Переместить карточку</h3>
+
+                {moveError && (
+                  <div
+                    className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 flex items-start gap-2"
+                    role="alert"
+                  >
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" aria-hidden />
+                    <span>{moveError}</span>
+                  </div>
+                )}
 
                 <div className="mb-6">
                   <label htmlFor="status-select" className="block text-sm font-medium text-gray-700 mb-2">
