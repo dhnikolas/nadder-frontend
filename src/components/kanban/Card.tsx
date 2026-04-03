@@ -190,7 +190,7 @@ const Card: React.FC<CardProps> = React.memo(({
         onMouseLeave={handleMouseLeave}
         title={cardTitle}
       >
-        <div className="flex justify-between items-start mb-2 min-h-[1.5rem]">
+        <div className="flex justify-between items-start mb-1 min-h-[1.5rem]">
                 <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 mr-2 leading-snug flex items-start">
                   {isSecret && (
                     <span className="inline-flex shrink-0 mt-[5px] mr-[5px]" title="Секретная карточка">
@@ -215,7 +215,7 @@ const Card: React.FC<CardProps> = React.memo(({
           </button>
         </div>
         
-        <div className="flex-1 flex flex-col justify-start mt-3">
+        <div className="flex-1 flex flex-col justify-start mt-1">
           {isSecret ? (
             <p className="text-xs text-gray-400 line-clamp-2 mb-2 italic">Содержимое скрыто</p>
           ) : (
