@@ -25,6 +25,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   const [createCardStatusId, setCreateCardStatusId] = useState<number | null>(null);
   const [createCardPosition, setCreateCardPosition] = useState<'top' | 'bottom'>('bottom');
   const [selectedCard, setSelectedCard] = useState<CardResponse | null>(null);
+  const [isSecretCardCreate, setIsSecretCardCreate] = useState(false);
   const lastLoadRef = useRef<{ projectId: number; pipelineId: number } | null>(null);
   const loadingRef = useRef<boolean>(false); // Флаг активной загрузки
   const cardsRef = useRef<CardsData>({}); // Ref для актуального состояния карточек
@@ -207,7 +208,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
   }, [projectId, pipelineId]);
 
   // Обновление карточки
-  const handleUpdateCard = useCallback(async (cardId: number, cardData: { title?: string; description?: string }) => {
+  const handleUpdateCard = useCallback(async (cardId: number, cardData: { title?: string; description?: string; secret?: boolean }) => {
     try {
       const updatedCard = await apiService.updateCard(projectId, cardId, cardData);
       
@@ -340,12 +341,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
     setCreateCardStatusId(statusId);
     setCreateCardPosition(position);
     setSelectedCard(null);
+    setIsSecretCardCreate(false);
+    setIsCardModalOpen(true);
+  }, []);
+
+  const handleCreateSecretCardClick = useCallback((statusId: number, position: 'top' | 'bottom') => {
+    setCreateCardStatusId(statusId);
+    setCreateCardPosition(position);
+    setSelectedCard(null);
+    setIsSecretCardCreate(true);
     setIsCardModalOpen(true);
   }, []);
 
   const handleCardClick = useCallback((card: CardResponse) => {
     setSelectedCard(card);
     setCreateCardStatusId(null);
+    setIsSecretCardCreate(false);
     setIsCardModalOpen(true);
   }, []);
 
@@ -549,6 +560,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
               onDeleteStatus={handleDeleteStatus}
               onMoveStatus={handleMoveStatus}
               onCreateCardClick={handleCreateCardClick}
+              onCreateSecretCardClick={handleCreateSecretCardClick}
               onCardClick={handleCardClick}
             />
           );
@@ -564,13 +576,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
       {/* Модальное окно карточки */}
       <CardModal
         isOpen={isCardModalOpen}
-        onClose={() => setIsCardModalOpen(false)}
+        onClose={() => {
+          setIsCardModalOpen(false);
+          setIsSecretCardCreate(false);
+        }}
         onCreateCard={async (cardData) => {
           if (createCardStatusId) {
             const createdCard = await handleCreateCard(createCardStatusId, cardData, createCardPosition);
-            // После создания переключаемся в режим редактирования той же карточки
-            setSelectedCard(createdCard);
             setCreateCardStatusId(null);
+            setIsSecretCardCreate(false);
+            if (createdCard.secret) {
+              setIsCardModalOpen(false);
+              setSelectedCard(null);
+            } else {
+              setSelectedCard(createdCard);
+            }
           }
         }}
         onUpdate={async (cardId, cardData) => {
@@ -581,6 +601,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         card={createCardStatusId ? null : selectedCard}
         statusId={createCardStatusId || selectedCard?.status_id}
         statuses={statuses}
+        isSecretCreate={isSecretCardCreate}
       />
     </div>
   );

@@ -13,7 +13,7 @@ interface StatusColumnProps {
   index: number;
   isLastStatus?: boolean;
   onCreateCard: (statusId: number, cardData: CreateCardRequest, position?: 'top' | 'bottom') => Promise<void>;
-  onUpdateCard: (cardId: number, cardData: { title?: string; description?: string }) => Promise<void>;
+  onUpdateCard: (cardId: number, cardData: { title?: string; description?: string; secret?: boolean }) => Promise<void>;
   onDeleteCard: (statusId: number, cardId: number) => Promise<void>;
   moveCardInUI: (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => Promise<void>;
   saveChangesToAPI: (cardId: number, fromStatusId: number, toStatusId: number) => Promise<void>;
@@ -21,6 +21,7 @@ interface StatusColumnProps {
   onDeleteStatus?: (statusId: number) => Promise<void>;
   onMoveStatus?: (fromIndex: number, toIndex: number) => void;
   onCreateCardClick: (statusId: number, position: 'top' | 'bottom') => void;
+  onCreateSecretCardClick?: (statusId: number, position: 'top' | 'bottom') => void;
   onCardClick: (card: CardResponse) => void;
 }
 
@@ -51,6 +52,7 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
   onDeleteStatus,
   onMoveStatus,
   onCreateCardClick,
+  onCreateSecretCardClick,
   onCardClick,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -492,6 +494,19 @@ const StatusColumn: React.FC<StatusColumnProps> = React.memo(({
           >
             {isCollapsed ? 'Развернуть' : 'Свернуть'}
           </button>
+          {onCreateSecretCardClick && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateSecretCardClick(status.id, 'bottom');
+                setIsMenuOpen(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+            >
+              Создать секрет
+            </button>
+          )}
           {onDeleteStatus && (
             <button
               onClick={(e) => {

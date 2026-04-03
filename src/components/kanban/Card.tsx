@@ -1,13 +1,13 @@
 import React, { useRef, useCallback, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { CardResponse } from '../../types/api';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Lock } from 'lucide-react';
 import { useDragIndicator } from '../../contexts/DragIndicatorContext';
 
 interface CardProps {
   card: CardResponse;
   index: number;
-  onUpdate: (cardId: number, cardData: { title?: string; description?: string }) => Promise<void>;
+  onUpdate: (cardId: number, cardData: { title?: string; description?: string; secret?: boolean }) => Promise<void>;
   onDelete: (cardId: number) => Promise<void>;
   moveCardInUI: (cardId: number, fromStatusId: number, toStatusId: number, toIndex: number) => Promise<void>;
   saveChangesToAPI: (cardId: number, fromStatusId: number, toStatusId: number) => Promise<void>;
@@ -170,7 +170,8 @@ const Card: React.FC<CardProps> = React.memo(({
   }, []);
 
   const cardTitle = card.title || 'Без названия';
-  const cardDescription = card.description || '';
+  const isSecret = Boolean(card.secret);
+  const cardDescription = isSecret ? '' : card.description || '';
 
   return (
     <>
@@ -189,9 +190,14 @@ const Card: React.FC<CardProps> = React.memo(({
         onMouseLeave={handleMouseLeave}
         title={cardTitle}
       >
-        <div className="flex justify-between items-start mb-2 h-6">
-                <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 mr-2 leading-tight">
-                  {cardTitle}
+        <div className="flex justify-between items-start mb-2 min-h-[1.5rem]">
+                <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 mr-2 leading-snug flex items-start">
+                  {isSecret && (
+                    <span className="inline-flex shrink-0 mt-[5px] mr-[5px]" title="Секретная карточка">
+                      <Lock className="h-3.5 w-3.5 text-red-600" strokeWidth={2} aria-hidden />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">{cardTitle}</span>
                 </h4>
           <button
             onClick={(e) => {
@@ -210,10 +216,14 @@ const Card: React.FC<CardProps> = React.memo(({
         </div>
         
         <div className="flex-1 flex flex-col justify-start mt-3">
-          {cardDescription && (
-            <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-              {cardDescription}
-            </p>
+          {isSecret ? (
+            <p className="text-xs text-gray-400 line-clamp-2 mb-2 italic">Содержимое скрыто</p>
+          ) : (
+            cardDescription && (
+              <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                {cardDescription}
+              </p>
+            )
           )}
         </div>
         
@@ -227,6 +237,7 @@ const Card: React.FC<CardProps> = React.memo(({
     prevProps.card.id === nextProps.card.id &&
     prevProps.card.title === nextProps.card.title &&
     prevProps.card.description === nextProps.card.description &&
+    prevProps.card.secret === nextProps.card.secret &&
     prevProps.card.status_id === nextProps.card.status_id &&
     prevProps.index === nextProps.index
   );

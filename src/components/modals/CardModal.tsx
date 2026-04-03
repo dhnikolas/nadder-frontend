@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { CardResponse, CreateCardRequest, StatusResponse, MoveCardRequest } from '../../types/api';
+import { encryptCardDescription, decryptCardDescription } from '../../utils/secretCardCrypto';
 
 interface CardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  card?: CardResponse | null; // undefined для создания новой карточки
-  onUpdate?: (cardId: number, cardData: { title?: string; description?: string }) => Promise<void>;
+  card?: CardResponse | null;
+  onUpdate?: (cardId: number, cardData: { title?: string; description?: string; secret?: boolean }) => Promise<void>;
   onCreateCard?: (cardData: CreateCardRequest) => Promise<void>;
   onMoveCard?: (cardId: number, data: MoveCardRequest) => Promise<void>;
-  statusId?: number; // ID статуса для создания карточки
-  statuses?: StatusResponse[]; // Список всех статусов для перемещения
+  statusId?: number;
+  statuses?: StatusResponse[];
+  /** Режим создания секретной карточки (два поля пароля до ввода текста) */
+  isSecretCreate?: boolean;
 }
 
 const CardModal: React.FC<CardModalProps> = ({
@@ -21,11 +24,14 @@ const CardModal: React.FC<CardModalProps> = ({
   onMoveCard,
   statusId,
   statuses = [],
+  isSecretCreate = false,
 }) => {
-  // Инициализируем контент сразу при получении карточки
   const getInitialContent = () => {
-    if (card) {
+    if (card && !card.secret) {
       return card.title + (card.description ? '\n' + card.description : '');
+    }
+    if (card?.secret) {
+      return card.title;
     }
     return '';
   };
@@ -38,7 +44,17 @@ const CardModal: React.FC<CardModalProps> = ({
   const [initialContent, setInitialContent] = useState(getInitialContent);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Функция для разделения контента на название и описание
+  const [secretCreateUnlocked, setSecretCreateUnlocked] = useState(false);
+  const [pwCreate1, setPwCreate1] = useState('');
+  const [pwCreate2, setPwCreate2] = useState('');
+
+  const [secretEditUnlocked, setSecretEditUnlocked] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlockError, setUnlockError] = useState('');
+
+  /** Пароль только в памяти на время работы с модалкой; не сохраняется */
+  const sessionPasswordRef = useRef<string | null>(null);
+
   const parseContent = (text: string) => {
     const lines = text.split('\n');
     const title = lines[0] || '';
@@ -46,38 +62,75 @@ const CardModal: React.FC<CardModalProps> = ({
     return { title, description };
   };
 
-  // Функция для проверки изменений
-  const hasChanges = () => {
-    return content.trim() !== initialContent.trim();
+  const hasChanges = () => content.trim() !== initialContent.trim();
+
+  const resetSecretUiState = () => {
+    setSecretCreateUnlocked(false);
+    setPwCreate1('');
+    setPwCreate2('');
+    setSecretEditUnlocked(false);
+    setUnlockPassword('');
+    setUnlockError('');
+    sessionPasswordRef.current = null;
   };
 
-  // Обновляем контент при изменении карточки
   useLayoutEffect(() => {
-    if (isOpen) {
-      if (card) {
-        const combinedContent = card.title + (card.description ? '\n' + card.description : '');
-        setContent(combinedContent);
-        setInitialContent(combinedContent);
+    if (!isOpen) return;
+    resetSecretUiState();
+    if (card) {
+      if (card.secret) {
+        setContent(card.title);
+        setInitialContent(card.title);
+        setSecretEditUnlocked(false);
       } else {
-        setContent('');
-        setInitialContent('');
+        const combined = card.title + (card.description ? '\n' + card.description : '');
+        setContent(combined);
+        setInitialContent(combined);
+      }
+    } else {
+      setContent('');
+      setInitialContent('');
+      if (isSecretCreate) {
+        setSecretCreateUnlocked(false);
       }
     }
-  }, [card, isOpen]);
+  }, [card, isOpen, isSecretCreate]);
 
-  // Устанавливаем курсор в конец текста только один раз при открытии
   useEffect(() => {
-    if (isOpen && textareaRef.current) {
-      const textarea = textareaRef.current;
-      const textLength = textarea.value.length;
-      textarea.setSelectionRange(textLength, textLength);
-      textarea.focus();
+    if (!isOpen) {
+      resetSecretUiState();
     }
-  }, [isOpen]); // Только при изменении isOpen, не при изменении content
+  }, [isOpen]);
+
+  const MIN_SECRET_PASSWORD_LEN = 8;
+
+  useEffect(() => {
+    if (
+      isSecretCreate &&
+      pwCreate1.length >= MIN_SECRET_PASSWORD_LEN &&
+      pwCreate1 === pwCreate2
+    ) {
+      setSecretCreateUnlocked(true);
+      sessionPasswordRef.current = pwCreate1;
+      setPwCreate1('');
+      setPwCreate2('');
+    }
+  }, [isSecretCreate, pwCreate1, pwCreate2]);
+
+  useEffect(() => {
+    if (!isOpen || !textareaRef.current) return;
+    const needPasswordGate =
+      (Boolean(card?.secret) && !secretEditUnlocked) ||
+      (isSecretCreate && !secretCreateUnlocked);
+    if (needPasswordGate) return;
+    const textarea = textareaRef.current;
+    const textLength = textarea.value.length;
+    textarea.setSelectionRange(textLength, textLength);
+    textarea.focus();
+  }, [isOpen, card?.secret, secretEditUnlocked, isSecretCreate, secretCreateUnlocked]);
 
   const isEditMode = !!card;
 
-  // Функции для перемещения карточки
   const handleMoveClick = () => {
     if (card) {
       setSelectedStatusId(card.status_id);
@@ -95,7 +148,7 @@ const CardModal: React.FC<CardModalProps> = ({
     try {
       await onMoveCard(card.id, { status_id: selectedStatusId });
       setIsMoveModalOpen(false);
-      onClose(); // Закрываем модальное окно после перемещения
+      onClose();
     } catch (error) {
       console.error('Ошибка перемещения карточки:', error);
     } finally {
@@ -108,16 +161,13 @@ const CardModal: React.FC<CardModalProps> = ({
     setSelectedStatusId(null);
   };
 
-  // Обработчики для отслеживания кликов
   const handleBackdropMouseDown = (e: React.MouseEvent) => {
-    // Проверяем, что клик был именно по backdrop, а не по модальному окну
     if (e.target === e.currentTarget) {
       setIsMouseDownInside(false);
     }
   };
 
   const handleBackdropClick = async (e: React.MouseEvent) => {
-    // Закрываем только если клик начался и закончился вне модального окна
     if (e.target === e.currentTarget && !isMouseDownInside) {
       await handleSaveAndClose();
     }
@@ -127,31 +177,81 @@ const CardModal: React.FC<CardModalProps> = ({
     setIsMouseDownInside(true);
   };
 
-  // Функция: Сохраняет карточку без закрытия окна
+  const handleUnlockSecretEdit = async () => {
+    if (!card?.secret || !card.description) {
+      setUnlockError('Нет данных для расшифровки');
+      return;
+    }
+    setUnlockError('');
+    setIsLoading(true);
+    try {
+      const plain = await decryptCardDescription(card.description, unlockPassword);
+      sessionPasswordRef.current = unlockPassword;
+      setUnlockPassword('');
+      const combined = card.title + (plain ? '\n' + plain : '');
+      setContent(combined);
+      setInitialContent(combined);
+      setSecretEditUnlocked(true);
+    } catch {
+      setUnlockError('Неверный пароль');
+      sessionPasswordRef.current = null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (isLoading) return;
+
+    const passwordGateCreate = isSecretCreate && !secretCreateUnlocked;
+    const passwordGateEdit = Boolean(card?.secret) && !secretEditUnlocked;
+    if (passwordGateCreate || passwordGateEdit) return;
 
     const { title, description } = parseContent(content);
 
     setIsLoading(true);
     try {
       if (isEditMode && card && onUpdate) {
-        // Режим редактирования - сохраняем даже пустую карточку
-        await onUpdate(card.id, {
-          title: title.trim() || 'Без названия',
-          description: description.trim(),
-        });
-        // Обновляем initialContent после успешного сохранения
-        const newContent = (title.trim() || 'Без названия') + (description.trim() ? '\n' + description.trim() : '');
+        if (card.secret) {
+          const pwd = sessionPasswordRef.current;
+          if (!pwd) {
+            throw new Error('Нет пароля для сохранения');
+          }
+          const enc = await encryptCardDescription(description.trim(), pwd);
+          await onUpdate(card.id, {
+            title: title.trim() || 'Без названия',
+            description: enc,
+            secret: true,
+          });
+        } else {
+          await onUpdate(card.id, {
+            title: title.trim() || 'Без названия',
+            description: description.trim(),
+          });
+        }
+        const newContent =
+          (title.trim() || 'Без названия') + (description.trim() ? '\n' + description.trim() : '');
         setInitialContent(newContent);
       } else if (!isEditMode && onCreateCard && statusId) {
-        // Режим создания - сохраняем даже пустую карточку
-        await onCreateCard({
-          title: title.trim() || 'Без названия',
-          description: description.trim(),
-        });
-        // Обновляем initialContent после успешного создания
-        const newContent = (title.trim() || 'Без названия') + (description.trim() ? '\n' + description.trim() : '');
+        if (isSecretCreate) {
+          const pwd = sessionPasswordRef.current;
+          if (!pwd) {
+            throw new Error('Нет пароля для сохранения');
+          }
+          const enc = await encryptCardDescription(description.trim(), pwd);
+          await onCreateCard({
+            title: title.trim() || 'Без названия',
+            description: enc,
+            secret: true,
+          });
+        } else {
+          await onCreateCard({
+            title: title.trim() || 'Без названия',
+            description: description.trim(),
+          });
+        }
+        const newContent =
+          (title.trim() || 'Без названия') + (description.trim() ? '\n' + description.trim() : '');
         setInitialContent(newContent);
       }
     } catch (error) {
@@ -161,21 +261,16 @@ const CardModal: React.FC<CardModalProps> = ({
     }
   };
 
-  // Функция 1: Закрывает и сохраняет карточку если есть изменения
   const handleSaveAndClose = async () => {
     if (isLoading) return;
-
-    // Проверяем, есть ли изменения
     if (!hasChanges()) {
       onClose();
       return;
     }
-
     await handleSave();
     onClose();
   };
 
-  // Функция 2: Закрывает и не сохраняет карточку
   const handleCloseWithoutSave = () => {
     onClose();
   };
@@ -185,6 +280,20 @@ const CardModal: React.FC<CardModalProps> = ({
     await handleSave();
   };
 
+  const textareaDisabled =
+    (isSecretCreate && !secretCreateUnlocked) || (Boolean(card?.secret) && !secretEditUnlocked);
+
+  const canSave =
+    !textareaDisabled &&
+    !isLoading &&
+    hasChanges() &&
+    (!isSecretCreate || secretCreateUnlocked) &&
+    (!card?.secret || secretEditUnlocked);
+
+  const showCreatePasswordPanel = Boolean(!card && isSecretCreate && !secretCreateUnlocked);
+  const showEditPasswordPanel = Boolean(card?.secret && !secretEditUnlocked);
+  /** Кнопки «Создать»/«Сохранить» только после ввода паролей, не на экранах разблокировки */
+  const showEditorPrimaryButton = !showCreatePasswordPanel && !showEditPasswordPanel;
 
   if (!isOpen) return null;
 
@@ -197,120 +306,185 @@ const CardModal: React.FC<CardModalProps> = ({
           }
         `}
       </style>
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]" 
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]"
         onMouseDown={handleBackdropMouseDown}
         onClick={handleBackdropClick}
       >
-        <div 
-          className="bg-white rounded-lg shadow-xl max-w-5xl w-full mx-4 h-[80vh] overflow-hidden" 
+        <div
+          className="bg-white rounded-lg shadow-xl max-w-5xl w-full mx-4 h-[80vh] overflow-hidden flex flex-col"
           onMouseDown={handleModalMouseDown}
           onClick={(e) => e.stopPropagation()}
         >
+          <form onSubmit={handleSubmit} className="p-4 h-full flex flex-col min-h-0">
+            <div className="flex-1 relative min-h-0 flex flex-col">
+              {showCreatePasswordPanel && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/95 px-6">
+                  <p className="text-sm text-gray-600 mb-4 text-center max-w-md">
+                    Введите пароль дважды одинаково (не менее {MIN_SECRET_PASSWORD_LEN} символов). После совпадения
+                    можно будет заполнить карточку.
+                  </p>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={pwCreate1}
+                    onChange={(e) => setPwCreate1(e.target.value)}
+                    placeholder="Пароль"
+                    className="w-full max-w-sm px-3 py-2 mb-2 border border-gray-300 rounded-md"
+                  />
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={pwCreate2}
+                    onChange={(e) => setPwCreate2(e.target.value)}
+                    placeholder="Повторите пароль"
+                    className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              )}
 
-        <form onSubmit={handleSubmit} className="p-4 h-full flex flex-col">
-          <div className="flex-1">
+              {showEditPasswordPanel && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/95 px-6">
+                  <p className="text-sm text-gray-600 mb-4 text-center max-w-md">
+                    Секретная карточка. Введите пароль, чтобы просмотреть и изменить содержимое.
+                  </p>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={unlockPassword}
+                    onChange={(e) => {
+                      setUnlockPassword(e.target.value);
+                      setUnlockError('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleUnlockSecretEdit();
+                      }
+                    }}
+                    placeholder="Пароль"
+                    className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                  {unlockError && <p className="text-sm text-red-600 mt-2">{unlockError}</p>}
+                  <button
+                    type="button"
+                    onClick={handleUnlockSecretEdit}
+                    disabled={isLoading || !unlockPassword}
+                    className="mt-4 px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {isLoading ? 'Проверка...' : 'Разблокировать'}
+                  </button>
+                </div>
+              )}
+
               <textarea
                 ref={textareaRef}
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full h-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-0 focus:border-gray-300 resize-none first-line-bold"
-                placeholder="Введите название карточки (первая строка)&#10;И описание карточки (остальные строки)"
-                required
-                autoFocus
+                disabled={textareaDisabled}
+                className="w-full flex-1 min-h-[200px] px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-0 focus:border-gray-300 resize-none first-line-bold disabled:bg-gray-50 disabled:text-gray-500"
+                placeholder={
+                  textareaDisabled && card?.secret
+                    ? 'Содержимое скрыто до ввода пароля'
+                    : 'Введите название карточки (первая строка)\nИ описание карточки (остальные строки)'
+                }
+                required={!textareaDisabled}
+                autoFocus={!textareaDisabled}
                 style={{
                   fontFamily: 'monospace',
                   lineHeight: '1.5',
-                  fontWeight: 'normal'
+                  fontWeight: 'normal',
                 }}
               />
-          </div>
-
-          <div className="flex justify-between items-center mt-4">
-            <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={handleCloseWithoutSave}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
-            >
-              Отмена
-            </button>
-              
-              <button
-                type="submit"
-                disabled={isLoading || !hasChanges()}
-                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {isLoading ? (isEditMode ? 'Сохранение...' : 'Создание...') : (isEditMode ? 'Сохранить' : 'Создать')}
-              </button>
             </div>
-            
-            {/* Кнопка перемещения (только в режиме редактирования) */}
-            {isEditMode && card && onMoveCard && statuses.length > 1 && (
-              <button
-                type="button"
-                onClick={handleMoveClick}
-                disabled={isLoading}
-                className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors font-medium border border-blue-200 hover:border-blue-300"
-              >
-                Переместить
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
 
-      {/* Модальное окно выбора статуса для перемещения */}
-      {isMoveModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1001]" onClick={handleMoveCancel}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Переместить карточку</h3>
-              
-              <div className="mb-6">
-                <label htmlFor="status-select" className="block text-sm font-medium text-gray-700 mb-2">
-                  Выберите статус
-                </label>
-                <select
-                  id="status-select"
-                  value={selectedStatusId || ''}
-                  onChange={(e) => setSelectedStatusId(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  {statuses.map((status) => (
-                    <option key={status.id} value={status.id}>
-                      {status.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex justify-end space-x-3">
+            <div className="flex justify-between items-center mt-4 flex-shrink-0">
+              <div className="flex space-x-3">
                 <button
                   type="button"
-                  onClick={handleMoveCancel}
+                  onClick={handleCloseWithoutSave}
                   className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
                 >
                   Отмена
                 </button>
+
+                {showEditorPrimaryButton && (
+                  <button
+                    type="submit"
+                    disabled={!canSave}
+                    className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    {isLoading ? (isEditMode ? 'Сохранение...' : 'Создание...') : isEditMode ? 'Сохранить' : 'Создать'}
+                  </button>
+                )}
+              </div>
+
+              {isEditMode && card && onMoveCard && statuses.length > 1 && (!card.secret || secretEditUnlocked) && (
                 <button
                   type="button"
-                  onClick={handleMoveConfirm}
-                  disabled={isLoading || !selectedStatusId || selectedStatusId === card?.status_id}
-                  className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  onClick={handleMoveClick}
+                  disabled={isLoading}
+                  className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors font-medium border border-blue-200 hover:border-blue-300"
                 >
-                  {isLoading ? 'Перемещение...' : 'Переместить'}
+                  Переместить
                 </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {isMoveModalOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1001]"
+            onClick={handleMoveCancel}
+          >
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Переместить карточку</h3>
+
+                <div className="mb-6">
+                  <label htmlFor="status-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Выберите статус
+                  </label>
+                  <select
+                    id="status-select"
+                    value={selectedStatusId || ''}
+                    onChange={(e) => setSelectedStatusId(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    {statuses.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={handleMoveCancel}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors font-medium"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleMoveConfirm}
+                    disabled={isLoading || !selectedStatusId || selectedStatusId === card?.status_id}
+                    className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    {isLoading ? 'Перемещение...' : 'Переместить'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </>
   );
 };
 
 export default CardModal;
-

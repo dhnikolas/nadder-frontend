@@ -103,12 +103,14 @@ export interface CreateCardRequest {
   title: string;
   description?: string;
   sort_order?: number;
+  secret?: boolean;
 }
 
 export interface UpdateCardRequest {
   title?: string;
   description?: string;
   sort_order?: number;
+  secret?: boolean;
 }
 
 export interface MoveCardRequest {
@@ -130,6 +132,7 @@ export interface CardResponse {
   status_id: number;
   user_id: number;
   sort_order: number;
+  secret?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -181,6 +184,7 @@ export interface CardSearchResult {
   status_id: number;
   user_id: number;
   sort_order: number;
+  secret?: boolean;
   created_at: string;
   updated_at: string;
   project_id: number;
