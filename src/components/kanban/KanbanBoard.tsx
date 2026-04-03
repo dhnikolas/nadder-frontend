@@ -199,6 +199,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         }
       }, 100);
       
+      return newCard;
     } catch (error) {
       console.error('❌ Error creating card:', error);
       throw error;
@@ -537,7 +538,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
               cards={cards[status.id] || []}
               index={index}
               isLastStatus={isLastStatus}
-              onCreateCard={handleCreateCard}
+              onCreateCard={async (statusId, cardData, position) => {
+                await handleCreateCard(statusId, cardData, position);
+              }}
               onUpdateCard={handleUpdateCard}
               onDeleteCard={handleDeleteCard}
               moveCardInUI={moveCardInUI}
@@ -564,8 +567,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ pipelineId, projectId, cardTo
         onClose={() => setIsCardModalOpen(false)}
         onCreateCard={async (cardData) => {
           if (createCardStatusId) {
-            await handleCreateCard(createCardStatusId, cardData, createCardPosition);
-            // Не закрываем окно после создания - пользователь может продолжить редактирование
+            const createdCard = await handleCreateCard(createCardStatusId, cardData, createCardPosition);
+            // После создания переключаемся в режим редактирования той же карточки
+            setSelectedCard(createdCard);
+            setCreateCardStatusId(null);
           }
         }}
         onUpdate={async (cardId, cardData) => {
