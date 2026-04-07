@@ -7,6 +7,7 @@ import { DragIndicatorProvider } from './contexts/DragIndicatorContext';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import Dashboard from './components/Dashboard';
+import ReauthModal from './components/auth/ReauthModal';
 import { isElectron } from './utils/isElectron';
 
 // Компонент для защищенных маршрутов
@@ -109,6 +110,7 @@ const App: React.FC = () => {
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              <ReauthModal />
               </div>
             </div>
           </div>

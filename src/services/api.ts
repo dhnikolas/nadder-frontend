@@ -32,6 +32,7 @@ import {
 class ApiService {
   private api: AxiosInstance;
   private baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8082/api/v1';
+  private unauthorizedHandler: (() => void) | null = null;
 
   constructor() {
     this.api = axios.create({
@@ -54,15 +55,20 @@ class ApiService {
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+        const requestUrl = error.config?.url || '';
+        const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+        if (error.response?.status === 401 && !isAuthEndpoint) {
+          this.unauthorizedHandler?.();
         }
         
         return Promise.reject(error);
       }
     );
+  }
+
+  setUnauthorizedHandler(handler: (() => void) | null) {
+    this.unauthorizedHandler = handler;
   }
 
   // Аутентификация
